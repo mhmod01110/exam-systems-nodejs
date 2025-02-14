@@ -23,69 +23,62 @@ const handleJWTError = () =>
 const handleJWTExpiredError = () =>
   new AppError('Your token has expired. Please log in again.', 401);
 
-const sendErrorDev = (err, req, res) => {
-  console.error('ERROR 💥', err);
-  
-  if (req.xhr || req.headers.accept.includes('json')) {
-    return res.status(err.statusCode).json({
-      status: err.status,
-      error: err,
-      message: err.message,
-      stack: err.stack
-    });
-  }
-
-  res.status(err.statusCode).render('error', {
-    title: 'Error',
-    msg: err.message,
-    error: err
-  });
-};
-
-const sendErrorProd = (err, req, res) => {
-  if (req.xhr || req.headers.accept.includes('json')) {
-    if (err.isOperational) {
-      return res.status(err.statusCode).json({
-        status: err.status,
-        message: err.message
-      });
-    }
-    return res.status(500).json({
-      status: 'error',
-      message: 'Something went wrong!'
-    });
-  }
-
-  if (err.isOperational) {
-    return res.status(err.statusCode).render('error', {
-      title: 'Error',
-      msg: err.message
-    });
-  }
-  
-  return res.status(500).render('error', {
-    title: 'Error',
-    msg: 'Please try again later.'
-  });
-};
-
-module.exports = (err, req, res, next) => {
+const handleError = (err, req, res) => {
+  // Set default error status
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
 
-  if (process.env.NODE_ENV === 'development') {
-    sendErrorDev(err, req, res);
-  } else {
-    let error = { ...err };
-    error.message = err.message;
-    
-    if (err.name === 'CastError') error = handleCastErrorDB(err);
-    if (err.code === 11000) error = handleDuplicateFieldsDB(err);
-    if (err.name === 'ValidationError') error = handleValidationErrorDB(err);
-    if (err.name === 'JsonWebTokenError') error = handleJWTError();
-    if (err.name === 'TokenExpiredError') error = handleJWTExpiredError();
-    if (err.code === 'EBADCSRFTOKEN') error = new AppError('Invalid form submission. Please try again.', 403);
-
-    sendErrorProd(error, req, res);
+  // Handle AJAX/API requests
+  if (req.xhr || req.headers.accept.includes('application/json')) {
+    return res.status(err.statusCode).json({
+      status: err.status,
+      message: err.message,
+      ...(process.env.NODE_ENV === 'development' && { error: err })
+    });
   }
+
+  // For regular requests, render appropriate error page
+  const errorPage = `errors/${err.statusCode}`;
+  
+  // Check if the error page template exists, if not default to 500
+  try {
+    return res.status(err.statusCode).render(errorPage, {
+      title: `Error ${err.statusCode}`,
+      message: err.message,
+      error: process.env.NODE_ENV === 'development' ? err : null
+    });
+  } catch (e) {
+    // If template doesn't exist, use 500
+    return res.status(500).render('errors/500', {
+      title: 'Server Error',
+      message: 'Something went wrong',
+      error: process.env.NODE_ENV === 'development' ? err : null
+    });
+  }
+};
+
+module.exports = (err, req, res, next) => {
+  // Log error in development
+  if (process.env.NODE_ENV === 'development') {
+    console.error('ERROR 💥', err);
+  }
+
+  // Clone the error to avoid modifying the original
+  let error = { ...err };
+  error.message = err.message;
+  error.statusCode = err.statusCode;
+  error.status = err.status;
+
+  // Handle specific error types
+  if (err.name === 'CastError') error = handleCastErrorDB(err);
+  if (err.code === 11000) error = handleDuplicateFieldsDB(err);
+  if (err.name === 'ValidationError') error = handleValidationErrorDB(err);
+  if (err.name === 'JsonWebTokenError') error = handleJWTError();
+  if (err.name === 'TokenExpiredError') error = handleJWTExpiredError();
+  if (err.code === 'EBADCSRFTOKEN') {
+    error = new AppError('Invalid form submission. Please try again.', 403);
+  }
+
+  // Send error response
+  handleError(error, req, res);
 }; 

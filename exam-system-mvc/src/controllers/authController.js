@@ -26,8 +26,8 @@ exports.postLogin = async (req, res, next) => {
     try {
         const { email, password } = req.body;
         
-        // Find user
-        const user = await User.findOne({ email });
+        // Find user and select all fields needed for session
+        const user = await User.findOne({ email }).select('+password');
         if (!user) {
             throw new AppError('Invalid email or password', 401);
         }
@@ -37,19 +37,41 @@ exports.postLogin = async (req, res, next) => {
         if (!isMatch) {
             throw new AppError('Invalid email or password', 401);
         }
+
+        // Check if user is active
+        if (!user.isActive) {
+            throw new AppError('Your account has been deactivated. Please contact admin.', 401);
+        }
+        
+        // Create session data
+        const sessionUser = {
+            _id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            role: user.role,
+            departmentId: user.departmentId
+        };
         
         // Set session
-        req.session.user = user;
+        req.session.user = sessionUser;
         req.session.isAuthenticated = true;
         
-        // Generate JWT for API access
-        const token = jwt.sign(
-            { userId: user._id },
-            process.env.JWT_SECRET,
-            { expiresIn: '1d' }
-        );
-        
-        res.redirect('/');
+        // Save session before redirect
+        req.session.save(err => {
+            if (err) {
+                return next(new AppError('Error creating session', 500));
+            }
+            
+            // Redirect based on role
+            if (user.role === 'admin') {
+                res.redirect('/dashboard');
+            } else if (user.role === 'teacher') {
+                res.redirect('/exams');
+            } else {
+                res.redirect('/my-exams');
+            }
+        });
     } catch (error) {
         next(error);
     }
@@ -61,27 +83,38 @@ exports.getRegister = (req, res) => {
         error: req.flash('error')
     });
 };
-
 exports.postRegister = async (req, res, next) => {
     try {
-        const { name, email, password, confirmPassword } = req.body;
+        const { firstName, lastName, email, password, confirmPassword, role } = req.body;
         
         // Check if passwords match
         if (password !== confirmPassword) {
-            throw new AppError('Passwords do not match', 400);
+            req.flash('error', 'Passwords do not match');
+            return res.render('auth/register', {
+                title: 'Register',
+                error: req.flash('error'),
+                oldInput: { firstName, lastName, email, role }
+            });
         }
         
         // Check if user exists
         const existingUser = await User.findOne({ email });
         if (existingUser) {
-            throw new AppError('Email already registered', 400);
+            req.flash('error', 'Email already registered');
+            return res.render('auth/register', {
+                title: 'Register', 
+                error: req.flash('error'),
+                oldInput: { firstName, lastName, email, role }
+            });
         }
         
         // Create new user
         const user = new User({
-            name,
+            firstName,
+            lastName,
             email,
-            password
+            password,
+            role
         });
         
         await user.save();
@@ -89,7 +122,13 @@ exports.postRegister = async (req, res, next) => {
         req.flash('success', 'Registration successful. Please login.');
         res.redirect('/auth/login');
     } catch (error) {
-        next(error);
+        req.flash('error', error.message);
+        res.render('auth/register', {
+            title: 'Register',
+            error: req.flash('error'),
+            oldInput: { name, email, role },
+            csrfToken: req.csrfToken()
+        });
     }
 };
 

@@ -23,7 +23,8 @@ const userSchema = new mongoose.Schema({
     password: {
         type: String,
         required: [true, 'Password is required'],
-        minlength: [6, 'Password must be at least 6 characters long']
+        minlength: [6, 'Password must be at least 6 characters long'],
+        select: false  // Don't include password by default in queries
     },
     role: {
         type: String,
@@ -45,7 +46,13 @@ const userSchema = new mongoose.Schema({
         default: Date.now
     }
 }, {
-    timestamps: true
+    timestamps: true,
+    toJSON: {
+        transform: function(doc, ret) {
+            delete ret.password;
+            return ret;
+        }
+    }
 });
 
 // Handle duplicate email error
@@ -87,13 +94,9 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
     }
 };
 
-// Remove password when converting to JSON
-userSchema.methods.toJSON = function() {
-    const obj = this.toObject();
-    delete obj.password;
-    delete obj.resetPasswordToken;
-    delete obj.resetPasswordExpires;
-    return obj;
-};
+// Virtual for full name
+userSchema.virtual('name').get(function() {
+    return `${this.firstName} ${this.lastName}`;
+});
 
 module.exports = mongoose.model('User', userSchema); 

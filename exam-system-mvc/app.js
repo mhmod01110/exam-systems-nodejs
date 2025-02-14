@@ -128,9 +128,9 @@ app.use(errorHandler);
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).render('error', {
+  res.status(404).render('errors/404', {
     title: '404 Not Found',
-    msg: 'The page you are looking for does not exist.'
+    message: 'The page you are looking for does not exist.'
   });
 });
 
