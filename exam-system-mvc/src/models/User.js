@@ -48,11 +48,28 @@ const userSchema = new mongoose.Schema({
 }, {
     timestamps: true,
     toJSON: {
+        virtuals: true,
         transform: function(doc, ret) {
             delete ret.password;
             return ret;
         }
+    },
+    toObject: {
+        virtuals: true
     }
+});
+
+// Virtual for user's full name
+userSchema.virtual('name').get(function() {
+    return `${this.firstName} ${this.lastName}`;
+});
+
+// Pre-save middleware to ensure name is set
+userSchema.pre('save', function(next) {
+    if (!this.name) {
+        this.name = `${this.firstName} ${this.lastName}`;
+    }
+    next();
 });
 
 // Handle duplicate email error
@@ -93,10 +110,5 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
         throw error;
     }
 };
-
-// Virtual for full name
-userSchema.virtual('name').get(function() {
-    return `${this.firstName} ${this.lastName}`;
-});
 
 module.exports = mongoose.model('User', userSchema); 

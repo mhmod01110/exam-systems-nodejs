@@ -7,7 +7,7 @@ const { isAuth, isTeacher } = require('../middleware/auth');
 router.get('/', isAuth, questionController.getQuestions);
 router.get('/create', isAuth, isTeacher, questionController.getCreateQuestion);
 router.post('/create', isAuth, isTeacher, questionController.postCreateQuestion);
-router.get('/:id', isAuth, questionController.getQuestion);
+router.get('/:id', isAuth, isTeacher, questionController.getQuestion);
 router.get('/:id/edit', isAuth, isTeacher, questionController.getEditQuestion);
 router.post('/:id/edit', isAuth, isTeacher, questionController.postEditQuestion);
 router.delete('/:id', isAuth, isTeacher, questionController.deleteQuestion);

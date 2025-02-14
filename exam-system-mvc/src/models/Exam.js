@@ -57,7 +57,7 @@ const examSchema = new mongoose.Schema({
             values: ['DRAFT', 'PUBLISHED', 'IN_PROGRESS', 'COMPLETED', 'ARCHIVED'],
             message: "{VALUE} is not a valid status"
         },
-        default: 'DRAFT'
+        default: 'PUBLISHED'
     },
     isPublic: {
         type: Boolean,

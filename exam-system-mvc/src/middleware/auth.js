@@ -14,6 +14,11 @@ exports.isAuth = async (req, res, next) => {
             return res.redirect('/auth/login');
         }
         
+        // Set user name if not already set
+        if (!user.name) {
+            user.name = `${user.firstName} ${user.lastName}`;
+        }
+        
         req.user = user;
         res.locals.user = user;
         next();

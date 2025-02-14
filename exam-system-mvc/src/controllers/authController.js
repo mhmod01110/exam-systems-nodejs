@@ -48,6 +48,7 @@ exports.postLogin = async (req, res, next) => {
             _id: user._id,
             firstName: user.firstName,
             lastName: user.lastName,
+            name: `${user.firstName} ${user.lastName}`,
             email: user.email,
             role: user.role,
             departmentId: user.departmentId

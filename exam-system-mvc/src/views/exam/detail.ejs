@@ -19,6 +19,7 @@
             <%- include('../components/exam/questions-buttons', { exam, user }) %>
             <%- include('../components/exam/edit-buttons', { exam, user, csrfToken }) %>
             <%- include('../components/exam/delete-button', { exam, user, csrfToken }) %>
+            <%- include('../components/exam/publish-buttons', { exam, user }) %>
         </div>
     </div>
 
@@ -27,20 +28,24 @@
         <div class="card-body <%= 
             exam.status === 'PUBLISHED' ? 'bg-success text-white' :
             exam.status === 'DRAFT' ? 'bg-secondary text-white' :
-            exam.status === 'IN_PROGRESS' ? 'bg-primary text-white' :
-            exam.status === 'COMPLETED' ? 'bg-info text-white' :
             'bg-dark text-white' %>">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <strong>Status:</strong> <%= exam.status %>
+                    <% if (exam.status === 'PUBLISHED') { %>
+                        <span class="ms-2">
+                            <i class="fas fa-clock"></i> Available until: <%= new Date(exam.endDate).toLocaleString() %>
+                        </span>
+                    <% } %>
                 </div>
                 <% if (exam.status === 'PUBLISHED' && user.role === 'student') { %>
-                    <form action="/exams/<%= exam._id %>/start" method="POST">
-                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                        <button type="submit" class="btn btn-light">
+                    <% if (new Date() <= new Date(exam.endDate)) { %>
+                        <a href="/exams/<%= exam._id %>/start" class="btn btn-light">
                             <i class="fas fa-play"></i> Start Exam
-                        </button>
-                    </form>
+                        </a>
+                    <% } else { %>
+                        <span class="badge bg-danger">Exam Expired</span>
+                    <% } %>
                 <% } %>
             </div>
         </div>

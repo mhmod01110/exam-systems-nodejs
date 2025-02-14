@@ -1,198 +1,157 @@
-<div class="container mt-4">
-    <!-- Exam Header -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="card-title mb-1"><%= attempt.exam.title %></h1>
-                    <p class="text-muted mb-0">
-                        Duration: <%= attempt.exam.duration %> minutes | 
-                        Total Marks: <%= attempt.exam.totalMarks %>
-                    </p>
-                </div>
-                <div id="timer" class="text-center">
-                    <h4 class="mb-0" id="timeRemaining"></h4>
-                    <small class="text-muted">Time Remaining</small>
+<div class="container">
+    <div class="row">
+        <!-- Timer and Info Header -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0"><%= attempt.exam.title %></h3>
+                        <div class="d-flex align-items-center">
+                            <div class="me-4">
+                                <strong>Time Remaining:</strong>
+                                <span id="timer" data-end-time="<%= attempt.endTime %>"></span>
+                            </div>
+                            <form id="submitForm" action="/exams/<%= attempt.exam._id %>/attempt/<%= attempt._id %>/submit" method="POST">
+                                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                <button type="submit" class="btn btn-primary" onclick="return confirm('Are you sure you want to submit your exam?')">
+                                    <i class="fas fa-paper-plane"></i> Submit Exam
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Exam Questions -->
-    <form action="/exams/<%= attempt.exam._id %>/attempt/<%= attempt._id %>/submit" 
-          method="POST" 
-          id="examForm"
-          class="needs-validation"
-          novalidate>
-        
-        <% attempt.questions.forEach((qa, index) => { %>
-            <div class="card mb-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <h5 class="card-title">Question <%= index + 1 %></h5>
-                        <span class="badge bg-primary">Marks: <%= qa.question.marks %></span>
-                    </div>
-
-                    <p class="mb-3"><%= qa.question.text %></p>
-
-                    <% if (qa.question.images && qa.question.images.length > 0) { %>
-                        <div class="mb-3">
-                            <% qa.question.images.forEach(image => { %>
-                                <div class="mb-2">
-                                    <img src="<%= image.url %>" 
-                                         alt="<%= image.caption %>"
-                                         class="img-fluid rounded"
-                                         style="max-height: 300px;">
-                                    <% if (image.caption) { %>
-                                        <small class="d-block text-muted mt-1">
-                                            <%= image.caption %>
-                                        </small>
-                                    <% } %>
+        <!-- Questions -->
+        <div class="col-12">
+            <form id="examForm" method="POST" action="/exams/<%= attempt.exam._id %>/attempt/<%= attempt._id %>/submit">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                
+                <% attempt.questions.forEach((questionAttempt, index) => { %>
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Question <%= index + 1 %></h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-3"><%= questionAttempt.question.text %></p>
+                            
+                            <% if (questionAttempt.question.type === 'MCQ') { %>
+                                <div class="list-group">
+                                    <% questionAttempt.question.options.forEach((option, optIndex) => { %>
+                                        <label class="list-group-item">
+                                            <input type="radio" 
+                                                   name="answer_<%= questionAttempt.question._id %>" 
+                                                   value="<%= option._id %>"
+                                                   class="me-2"
+                                                   <%= questionAttempt.answer === option._id.toString() ? 'checked' : '' %>>
+                                            <%= option.text %>
+                                        </label>
+                                    <% }); %>
                                 </div>
-                            <% }); %>
-                        </div>
-                    <% } %>
+                            
+                            <% } else if (questionAttempt.question.type === 'TrueFalse') { %>
+                                <div class="list-group">
+                                    <label class="list-group-item">
+                                        <input type="radio" 
+                                               name="answer_<%= questionAttempt.question._id %>" 
+                                               value="true"
+                                               class="me-2"
+                                               <%= questionAttempt.answer === 'true' ? 'checked' : '' %>>
+                                        True
+                                    </label>
+                                    <label class="list-group-item">
+                                        <input type="radio" 
+                                               name="answer_<%= questionAttempt.question._id %>" 
+                                               value="false"
+                                               class="me-2"
+                                               <%= questionAttempt.answer === 'false' ? 'checked' : '' %>>
+                                        False
+                                    </label>
+                                </div>
+                            
+                            <% } else { %>
+                                <textarea class="form-control" 
+                                          name="answer_<%= questionAttempt.question._id %>" 
+                                          rows="4"
+                                          placeholder="Enter your answer here"><%= questionAttempt.answer %></textarea>
+                            <% } %>
 
-                    <!-- Answer Input Based on Question Type -->
-                    <% if (qa.question.type === 'MCQ') { %>
-                        <div class="list-group">
-                            <% qa.question.options.forEach(option => { %>
-                                <label class="list-group-item">
-                                    <input type="radio" 
-                                           name="answer_<%= qa.question._id %>" 
-                                           value="<%= option._id %>"
-                                           class="form-check-input me-2"
-                                           <%= qa.answer === option._id.toString() ? 'checked' : '' %>>
-                                    <%= option.text %>
-                                </label>
-                            <% }); %>
+                            <div class="mt-2 text-muted">
+                                <small>
+                                    <i class="fas fa-star"></i> Marks: <%= questionAttempt.question.marks %>
+                                    | <i class="fas fa-info-circle"></i> Type: <%= questionAttempt.question.type %>
+                                </small>
+                            </div>
                         </div>
-                    <% } else if (qa.question.type === 'TrueFalse') { %>
-                        <div class="list-group">
-                            <label class="list-group-item">
-                                <input type="radio" 
-                                       name="answer_<%= qa.question._id %>" 
-                                       value="true"
-                                       class="form-check-input me-2"
-                                       <%= qa.answer === 'true' ? 'checked' : '' %>>
-                                True
-                            </label>
-                            <label class="list-group-item">
-                                <input type="radio" 
-                                       name="answer_<%= qa.question._id %>" 
-                                       value="false"
-                                       class="form-check-input me-2"
-                                       <%= qa.answer === 'false' ? 'checked' : '' %>>
-                                False
-                            </label>
-                        </div>
-                    <% } else if (qa.question.type === 'ShortAnswer') { %>
-                        <div class="form-group">
-                            <textarea name="answer_<%= qa.question._id %>"
-                                    class="form-control"
-                                    rows="3"
-                                    placeholder="Enter your answer here..."><%= qa.answer %></textarea>
-                        </div>
-                    <% } else if (qa.question.type === 'Essay') { %>
-                        <div class="form-group">
-                            <textarea name="answer_<%= qa.question._id %>"
-                                    class="form-control"
-                                    rows="6"
-                                    placeholder="Enter your answer here..."><%= qa.answer %></textarea>
-                        </div>
-                    <% } %>
-                </div>
-            </div>
-        <% }); %>
-
-        <!-- Submit Button -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="form-check">
-                        <input type="checkbox" 
-                               class="form-check-input" 
-                               id="confirmSubmission" 
-                               required>
-                        <label class="form-check-label" for="confirmSubmission">
-                            I confirm that I want to submit my exam
-                        </label>
                     </div>
-                    <button type="submit" 
-                            class="btn btn-primary btn-lg"
-                            id="submitButton"
-                            disabled>
+                <% }); %>
+
+                <div class="d-grid gap-2 mb-4">
+                    <button type="submit" class="btn btn-primary btn-lg">
                         <i class="fas fa-paper-plane"></i> Submit Exam
                     </button>
                 </div>
-            </div>
+            </form>
         </div>
-    </form>
+    </div>
 </div>
 
-<!-- Timer Script -->
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Set the end time
-        const endTime = new Date('<%= attempt.endTime %>').getTime();
+document.addEventListener('DOMContentLoaded', function() {
+    // Timer functionality
+    const timerElement = document.getElementById('timer');
+    const endTime = new Date(timerElement.dataset.endTime).getTime();
+    
+    function updateTimer() {
+        const now = new Date().getTime();
+        const timeLeft = endTime - now;
         
-        // Update timer every second
-        const timer = setInterval(function() {
-            const now = new Date().getTime();
-            const timeLeft = endTime - now;
-            
-            if (timeLeft <= 0) {
-                clearInterval(timer);
-                document.getElementById('timeRemaining').innerHTML = 'Time\'s Up!';
-                document.getElementById('examForm').submit();
-                return;
-            }
-            
-            // Calculate hours, minutes and seconds
-            const hours = Math.floor(timeLeft / (1000 * 60 * 60));
-            const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
-            
-            // Display the time
-            document.getElementById('timeRemaining').innerHTML = 
-                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            
-            // Add warning class when less than 5 minutes remaining
-            if (timeLeft < 300000) { // 5 minutes in milliseconds
-                document.getElementById('timer').classList.add('text-danger');
-            }
-        }, 1000);
+        if (timeLeft <= 0) {
+            document.getElementById('submitForm').submit();
+            return;
+        }
         
-        // Handle confirmation checkbox
-        const checkbox = document.getElementById('confirmSubmission');
-        const submitButton = document.getElementById('submitButton');
+        const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+        const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
         
-        checkbox.addEventListener('change', function() {
-            submitButton.disabled = !this.checked;
+        timerElement.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    // Update timer every second
+    updateTimer();
+    setInterval(updateTimer, 1000);
+    
+    // Auto-save functionality
+    const examForm = document.getElementById('examForm');
+    const formInputs = examForm.querySelectorAll('input[type="radio"], textarea');
+    
+    formInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            localStorage.setItem(`exam_${attempt._id}_${input.name}`, input.value);
         });
         
-        // Handle form submission
-        document.getElementById('examForm').addEventListener('submit', function(e) {
-            if (!confirm('Are you sure you want to submit your exam? This action cannot be undone.')) {
-                e.preventDefault();
+        // Load saved answers
+        const savedValue = localStorage.getItem(`exam_${attempt._id}_${input.name}`);
+        if (savedValue) {
+            if (input.type === 'radio') {
+                if (input.value === savedValue) {
+                    input.checked = true;
+                }
+            } else {
+                input.value = savedValue;
             }
-        });
-        
-        // Autosave answers every 30 seconds
-        setInterval(function() {
-            const formData = new FormData(document.getElementById('examForm'));
-            fetch(`/exams/<%= attempt.exam._id %>/attempt/<%= attempt._id %>/autosave`, {
-                method: 'POST',
-                body: formData
-            });
-        }, 30000);
-        
-        // Warn user before leaving page
-        window.addEventListener('beforeunload', function(e) {
-            e.preventDefault();
-            e.returnValue = '';
+        }
+    });
+    
+    // Clear localStorage on submit
+    examForm.addEventListener('submit', function() {
+        formInputs.forEach(input => {
+            localStorage.removeItem(`exam_${attempt._id}_${input.name}`);
         });
     });
+});
 </script>
 
 <%- include('../partials/footer') %> 
