@@ -24,20 +24,32 @@
     <%- include('../partials/header') %>
     
     <main class="container mt-4">
-        <% if (typeof messages !== 'undefined' && messages.error && messages.error.length > 0) { %>
+        <!-- Flash Messages -->
+        <% if (messages && messages.error && messages.error.length > 0) { %>
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>
                 <%= messages.error %>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         <% } %>
         
-        <% if (typeof messages !== 'undefined' && messages.success && messages.success.length > 0) { %>
+        <% if (messages && messages.success && messages.success.length > 0) { %>
             <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i>
                 <%= messages.success %>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         <% } %>
         
+        <% if (messages && messages.info && messages.info.length > 0) { %>
+            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                <i class="fas fa-info-circle me-2"></i>
+                <%= messages.info %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <% } %>
+        
+        <!-- Main Content -->
         <%- defineContent('body') %>
     </main>
     
@@ -51,22 +63,35 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Add CSRF token to all AJAX requests
-            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
             
-            document.addEventListener('submit', function(e) {
-                if (e.target.method === 'POST') {
-                    const hiddenInput = document.createElement('input');
-                    hiddenInput.type = 'hidden';
-                    hiddenInput.name = '_csrf';
-                    hiddenInput.value = token;
-                    e.target.appendChild(hiddenInput);
+            if (token) {
+                document.addEventListener('submit', function(e) {
+                    if (e.target.method === 'POST') {
+                        const hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = '_csrf';
+                        hiddenInput.value = token;
+                        e.target.appendChild(hiddenInput);
+                    }
+                });
+                
+                // Add CSRF token to fetch/axios requests
+                if (window.axios) {
+                    window.axios.defaults.headers.common['X-CSRF-TOKEN'] = token;
                 }
-            });
-            
-            // Add CSRF token to fetch/axios requests
-            if (window.axios) {
-                window.axios.defaults.headers.common['X-CSRF-TOKEN'] = token;
             }
+            
+            // Auto-dismiss alerts after 5 seconds
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    const closeButton = alert.querySelector('.btn-close');
+                    if (closeButton) {
+                        closeButton.click();
+                    }
+                }, 5000);
+            });
         });
     </script>
     <!-- Custom JavaScript -->

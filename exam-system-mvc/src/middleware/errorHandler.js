@@ -37,23 +37,26 @@ const handleError = (err, req, res) => {
     });
   }
 
-  // For regular requests, render appropriate error page
-  const errorPage = `errors/${err.statusCode}`;
+  // For regular requests, use flash messages and redirect
+  const referer = req.get('Referer') || '/';
   
-  // Check if the error page template exists, if not default to 500
-  try {
-    return res.status(err.statusCode).render(errorPage, {
-      title: `Error ${err.statusCode}`,
-      message: err.message,
-      error: process.env.NODE_ENV === 'development' ? err : null
-    });
-  } catch (e) {
-    // If template doesn't exist, use 500
-    return res.status(500).render('errors/500', {
-      title: 'Server Error',
-      message: 'Something went wrong',
-      error: process.env.NODE_ENV === 'development' ? err : null
-    });
+  // Set appropriate flash message
+  req.flash('error', err.message);
+  
+  // Handle different types of errors with appropriate redirects
+  switch (err.statusCode) {
+    case 401:
+      return res.redirect('/auth/login');
+    case 403:
+      return res.redirect(referer);
+    case 404:
+      return res.redirect('/');
+    default:
+      // Log server errors in development
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error details:', err);
+      }
+      return res.redirect(referer);
   }
 };
 
