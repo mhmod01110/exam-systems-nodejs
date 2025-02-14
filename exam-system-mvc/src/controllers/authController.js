@@ -206,7 +206,16 @@ exports.logout = (req, res) => {
     req.session.destroy(err => {
         if (err) {
             console.error('Logout error:', err);
+            // Handle error case
+            return res.status(500).render('error', {
+                title: 'Error',
+                message: 'An error occurred during logout',
+                csrfToken: req.csrfToken()
+            });
         }
+        // Clear the session cookie
+        res.clearCookie('connect.sid');
+        // Redirect to login page with new csrf token
         res.redirect('/auth/login');
     });
 }; 
