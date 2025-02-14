@@ -22,15 +22,17 @@
     <%- include('../partials/header') %>
     
     <main class="container mt-4">
-        <% if (typeof messages !== 'undefined' && messages.error) { %>
-            <div class="alert alert-danger">
+        <% if (typeof messages !== 'undefined' && messages.error && messages.error.length > 0) { %>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
                 <%= messages.error %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         <% } %>
         
-        <% if (typeof messages !== 'undefined' && messages.success) { %>
-            <div class="alert alert-success">
+        <% if (typeof messages !== 'undefined' && messages.success && messages.success.length > 0) { %>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
                 <%= messages.success %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         <% } %>
         

@@ -29,26 +29,16 @@ const examSchema = new mongoose.Schema({
     },
     startDate: {
         type: Date,
-        required: [true, "Start date is required"]
+        required: [true, "Start date is required"],
+        default: Date.now
     },
     endDate: {
         type: Date,
-        required: [true, "End date is required"]
-    },
-    totalMarks: {
-        type: Number,
-        required: [true, "Total marks is required"],
-        min: [1, "Total marks must be at least 1"]
-    },
-    passingMarks: {
-        type: Number,
-        required: [true, "Passing marks is required"],
-        min: [1, "Passing marks must be at least 1"],
-        validate: {
-            validator: function(value) {
-                return value <= this.totalMarks;
-            },
-            message: "Passing marks cannot be greater than total marks"
+        required: [true, "End date is required"],
+        default: function() {
+            const date = new Date();
+            date.setMonth(date.getMonth() + 6);
+            return date;
         }
     },
     createdBy: {
@@ -90,7 +80,12 @@ const examSchema = new mongoose.Schema({
         default: true
     },
     resultReleaseDate: {
-        type: Date
+        type: Date,
+        default: function() {
+            const date = new Date();
+            date.setMonth(date.getMonth() + 7);
+            return date;
+        }
     },
     instructions: {
         type: String,
@@ -110,6 +105,20 @@ const examSchema = new mongoose.Schema({
 // Virtual for number of enrolled students
 examSchema.virtual('enrolledCount').get(function() {
     return this.allowedStudents.length;
+});
+
+// Virtual for total marks
+examSchema.virtual('totalMarks').get(function() {
+    if (!this.questions || this.questions.length === 0) {
+        return 0;
+    }
+    return this.questions.reduce((total, question) => total + (question.marks || 0), 0);
+});
+
+// Virtual for passing marks (50% of total marks)
+examSchema.virtual('passingMarks').get(function() {
+    const total = this.totalMarks;
+    return Math.ceil(total * 0.5);
 });
 
 // Ensure end date is after start date

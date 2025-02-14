@@ -88,11 +88,19 @@ app.use((req, res, next) => {
   res.locals.csrfToken = req.csrfToken();
   res.locals.user = req.session.user || null;
   res.locals.currentPath = req.path;
+  
+  // Get flash messages
+  const success = req.flash('success');
+  const error = req.flash('error');
+  const info = req.flash('info');
+  
+  // Only set messages if they exist
   res.locals.messages = {
-    success: req.flash('success'),
-    error: req.flash('error'),
-    info: req.flash('info')
+    success: success.length > 0 ? success : null,
+    error: error.length > 0 ? error : null,
+    info: info.length > 0 ? info : null
   };
+  
   next();
 });
 

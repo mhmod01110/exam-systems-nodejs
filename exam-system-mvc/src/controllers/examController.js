@@ -91,8 +91,6 @@ exports.postCreateExam = async (req, res) => {
 
         // Convert string numbers to actual numbers
         formData.duration = parseInt(formData.duration);
-        formData.totalMarks = parseInt(formData.totalMarks);
-        formData.passingMarks = parseInt(formData.passingMarks);
         formData.maxAttempts = parseInt(formData.maxAttempts);
 
         // Create exam
@@ -114,7 +112,8 @@ exports.getExam = async (req, res) => {
             .populate('createdBy', 'username firstName lastName')
             .populate('department', 'name')
             .populate('questions')
-            .populate('allowedStudents', 'username firstName lastName');
+            .populate('allowedStudents', 'username firstName lastName')
+            .exec();
         
         if (!exam) {
             req.flash('error', 'Exam not found');

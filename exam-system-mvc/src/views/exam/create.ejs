@@ -75,6 +75,7 @@
                                    class="form-control" 
                                    id="duration" 
                                    name="duration" 
+                                   value="120"
                                    required
                                    min="5"
                                    max="480">
@@ -94,7 +95,12 @@
                             <input type="datetime-local" 
                                    class="form-control" 
                                    id="startDate" 
-                                   name="startDate" 
+                                   name="startDate"
+                                   value="<%= (() => { 
+                                    let now = new Date(); 
+                                    now.setMonth(now.getMonth() + 1); 
+                                    return now.toISOString().slice(0, 16); 
+                                    })() %>" 
                                    required>
                             <div class="invalid-feedback">
                                 Please specify a start date and time.
@@ -106,40 +112,14 @@
                                    class="form-control" 
                                    id="endDate" 
                                    name="endDate" 
-                                   required>
+                                   value="<%= (() => { 
+                                    let now = new Date(); 
+                                    now.setMonth(now.getMonth() + 6); 
+                                    return now.toISOString().slice(0, 16); 
+                                    })() %>" 
+                                    required>
                             <div class="invalid-feedback">
                                 Please specify an end date and time.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Marks -->
-                <div class="mb-4">
-                    <h5>Marks</h5>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="totalMarks" class="form-label">Total Marks</label>
-                            <input type="number" 
-                                   class="form-control" 
-                                   id="totalMarks" 
-                                   name="totalMarks" 
-                                   required
-                                   min="1">
-                            <div class="invalid-feedback">
-                                Total marks must be at least 1.
-                            </div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="passingMarks" class="form-label">Passing Marks</label>
-                            <input type="number" 
-                                   class="form-control" 
-                                   id="passingMarks" 
-                                   name="passingMarks" 
-                                   required
-                                   min="1">
-                            <div class="invalid-feedback">
-                                Passing marks must be at least 1 and cannot exceed total marks.
                             </div>
                         </div>
                     </div>
@@ -167,7 +147,13 @@
                             <input type="datetime-local" 
                                    class="form-control" 
                                    id="resultReleaseDate" 
-                                   name="resultReleaseDate">
+                                   name="resultReleaseDate"
+                                   value="<%= (() => { 
+                                    let now = new Date(); 
+                                    now.setMonth(now.getMonth() + 7); 
+                                    return now.toISOString().slice(0, 16); 
+                                    })() %>" 
+                                    required>
                             <div class="form-text">
                                 Leave blank to release results immediately after submission.
                             </div>
@@ -205,7 +191,8 @@
                             <input type="checkbox" 
                                    class="form-check-input" 
                                    id="isPublic" 
-                                   name="isPublic">
+                                   name="isPublic"
+                                   checked>
                             <label class="form-check-label" for="isPublic">
                                 Make Exam Public
                             </label>
@@ -238,80 +225,29 @@
 
 <!-- Form Validation Script -->
 <script>
+// Form validation
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form');
-    const totalMarks = document.getElementById('totalMarks');
-    const passingMarks = document.getElementById('passingMarks');
-    const startDate = document.getElementById('startDate');
-    const endDate = document.getElementById('endDate');
-    const resultReleaseDate = document.getElementById('resultReleaseDate');
-
-    form.addEventListener('submit', function(e) {
+    // Set default dates
+    const now = new Date();
+    const sixMonthsLater = new Date();
+    sixMonthsLater.setMonth(now.getMonth() + 6);
+    
+    // Format dates for datetime-local input
+    const formatDate = (date) => {
+        return date.toISOString().slice(0, 16);
+    };
+    
+    document.getElementById('startDate').value = formatDate(now);
+    document.getElementById('endDate').value = formatDate(sixMonthsLater);
+    
+    // Form validation
+    const form = document.querySelector('.needs-validation');
+    form.addEventListener('submit', function(event) {
         if (!form.checkValidity()) {
-            e.preventDefault();
-            e.stopPropagation();
+            event.preventDefault();
+            event.stopPropagation();
         }
-
-        // Validate passing marks
-        if (parseInt(passingMarks.value) > parseInt(totalMarks.value)) {
-            e.preventDefault();
-            passingMarks.setCustomValidity('Passing marks cannot exceed total marks');
-        } else {
-            passingMarks.setCustomValidity('');
-        }
-
-        // Validate dates
-        const start = new Date(startDate.value);
-        const end = new Date(endDate.value);
-        const release = resultReleaseDate.value ? new Date(resultReleaseDate.value) : null;
-
-        if (end <= start) {
-            e.preventDefault();
-            endDate.setCustomValidity('End date must be after start date');
-        } else {
-            endDate.setCustomValidity('');
-        }
-
-        if (release && release <= end) {
-            e.preventDefault();
-            resultReleaseDate.setCustomValidity('Result release date must be after end date');
-        } else {
-            resultReleaseDate.setCustomValidity('');
-        }
-
         form.classList.add('was-validated');
-    });
-
-    // Real-time validation for passing marks
-    [totalMarks, passingMarks].forEach(input => {
-        input.addEventListener('input', () => {
-            if (parseInt(passingMarks.value) > parseInt(totalMarks.value)) {
-                passingMarks.setCustomValidity('Passing marks cannot exceed total marks');
-            } else {
-                passingMarks.setCustomValidity('');
-            }
-        });
-    });
-
-    // Real-time validation for dates
-    [startDate, endDate, resultReleaseDate].forEach(input => {
-        input.addEventListener('input', () => {
-            const start = new Date(startDate.value);
-            const end = new Date(endDate.value);
-            const release = resultReleaseDate.value ? new Date(resultReleaseDate.value) : null;
-
-            if (end <= start) {
-                endDate.setCustomValidity('End date must be after start date');
-            } else {
-                endDate.setCustomValidity('');
-            }
-
-            if (release && release <= end) {
-                resultReleaseDate.setCustomValidity('Result release date must be after end date');
-            } else {
-                resultReleaseDate.setCustomValidity('');
-            }
-        });
     });
 });
 </script> 
