@@ -1,0 +1,31 @@
+<%- contentFor('body') %>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="text-center mb-0">Error</h3>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-exclamation-triangle text-danger" style="font-size: 4rem;"></i>
+                    </div>
+                    
+                    <h4 class="text-danger mb-3"><%= message %></h4>
+                    
+                    <% if (process.env.NODE_ENV === 'development' && error.stack) { %>
+                        <div class="alert alert-danger text-start">
+                            <pre class="mb-0"><%= error.stack %></pre>
+                        </div>
+                    <% } %>
+                    
+                    <div class="mt-4">
+                        <a href="/" class="btn btn-primary me-2">Go Home</a>
+                        <button onclick="history.back()" class="btn btn-outline-secondary">Go Back</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 

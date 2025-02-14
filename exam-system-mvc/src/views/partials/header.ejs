@@ -1,0 +1,85 @@
+<header class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+        <a class="navbar-brand" href="/">Exam System</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <% if (user) { %>
+                    <li class="nav-item">
+                        <a class="nav-link <%= (typeof currentPath !== 'undefined' && currentPath === '/dashboard') ? 'active' : '' %>" href="/dashboard">
+                            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    
+                    <% if (user.role === 'teacher' || user.role === 'admin') { %>
+                        <li class="nav-item">
+                            <a class="nav-link <%= (typeof currentPath !== 'undefined' && currentPath.startsWith('/exams')) ? 'active' : '' %>" href="/exams">
+                                <i class="fas fa-file-alt me-1"></i>Exams
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= (typeof currentPath !== 'undefined' && currentPath.startsWith('/questions')) ? 'active' : '' %>" href="/questions">
+                                <i class="fas fa-question-circle me-1"></i>Questions
+                            </a>
+                        </li>
+                    <% } %>
+                    
+                    <% if (user.role === 'student') { %>
+                        <li class="nav-item">
+                            <a class="nav-link <%= (typeof currentPath !== 'undefined' && currentPath === '/my-exams') ? 'active' : '' %>" href="/my-exams">
+                                <i class="fas fa-pencil-alt me-1"></i>My Exams
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <%= (typeof currentPath !== 'undefined' && currentPath === '/results') ? 'active' : '' %>" href="/results">
+                                <i class="fas fa-chart-bar me-1"></i>Results
+                            </a>
+                        </li>
+                    <% } %>
+                    
+                    <% if (user.role === 'admin') { %>
+                        <li class="nav-item">
+                            <a class="nav-link <%= (typeof currentPath !== 'undefined' && currentPath === '/users') ? 'active' : '' %>" href="/users">
+                                <i class="fas fa-users me-1"></i>Users
+                            </a>
+                        </li>
+                    <% } %>
+                <% } %>
+            </ul>
+            
+            <ul class="navbar-nav">
+                <% if (user) { %>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle me-1"></i><%= user.name %>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" href="/profile">
+                                    <i class="fas fa-id-card me-2"></i>Profile
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form action="/auth/logout" method="POST" class="d-inline">
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
+                <% } else { %>
+                    <li class="nav-item">
+                        <a class="nav-link <%= (typeof currentPath !== 'undefined' && currentPath === '/auth/login') ? 'active' : '' %>" href="/auth/login">
+                            <i class="fas fa-sign-in-alt me-1"></i>Login
+                        </a>
+                    </li>
+                <% } %>
+            </ul>
+        </div>
+    </div>
+</header> 

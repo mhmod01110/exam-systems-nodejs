@@ -1,0 +1,126 @@
+<%- contentFor('body') %>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>My Exams</h1>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <select class="form-select" id="statusFilter">
+                        <option value="">All Status</option>
+                        <option value="UPCOMING">Upcoming</option>
+                        <option value="AVAILABLE">Available Now</option>
+                        <option value="COMPLETED">Completed</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" id="typeFilter">
+                        <option value="">All Types</option>
+                        <option value="MCQ">Multiple Choice</option>
+                        <option value="PROJECT">Project</option>
+                        <option value="MIXED">Mixed</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-secondary w-100" id="resetFilters">
+                        <i class="fas fa-sync"></i> Reset Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exams List -->
+    <% if (exams.length === 0) { %>
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> No exams available.
+        </div>
+    <% } else { %>
+        <div class="row">
+            <% exams.forEach(exam => { %>
+                <div class="col-md-6 mb-4 exam-card" 
+                     data-status="<%= new Date() < new Date(exam.startDate) ? 'UPCOMING' : 
+                                   new Date() > new Date(exam.endDate) ? 'COMPLETED' : 
+                                   'AVAILABLE' %>"
+                     data-type="<%= exam.type %>">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h5 class="card-title mb-0"><%= exam.title %></h5>
+                                <span class="badge bg-<%= 
+                                    new Date() < new Date(exam.startDate) ? 'warning' : 
+                                    new Date() > new Date(exam.endDate) ? 'secondary' : 
+                                    'success' %>">
+                                    <%= new Date() < new Date(exam.startDate) ? 'Upcoming' : 
+                                        new Date() > new Date(exam.endDate) ? 'Completed' : 
+                                        'Available' %>
+                                </span>
+                            </div>
+
+                            <p class="card-text text-muted mb-3">
+                                <%= exam.description || 'No description provided' %>
+                            </p>
+
+                            <div class="mb-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-clock"></i> Duration: <%= exam.duration %> minutes<br>
+                                    <i class="fas fa-calendar-alt"></i> Start: <%= new Date(exam.startDate).toLocaleString() %><br>
+                                    <i class="fas fa-calendar-times"></i> End: <%= new Date(exam.endDate).toLocaleString() %><br>
+                                    <i class="fas fa-star"></i> Total Marks: <%= exam.totalMarks %><br>
+                                    <i class="fas fa-check-circle"></i> Passing Marks: <%= exam.passingMarks %>
+                                </small>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge bg-info me-1"><%= exam.type %></span>
+                                    <small class="text-muted">by <%= exam.createdBy.name %></small>
+                                </div>
+                                <% if (new Date() >= new Date(exam.startDate) && new Date() <= new Date(exam.endDate)) { %>
+                                    <a href="/exams/<%= exam._id %>" class="btn btn-primary">
+                                        <i class="fas fa-play"></i> Start Exam
+                                    </a>
+                                <% } %>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <% }); %>
+        </div>
+    <% } %>
+</div>
+
+<!-- Filtering Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const statusFilter = document.getElementById('statusFilter');
+    const typeFilter = document.getElementById('typeFilter');
+    const resetButton = document.getElementById('resetFilters');
+    const examCards = document.querySelectorAll('.exam-card');
+    
+    function applyFilters() {
+        const status = statusFilter.value;
+        const type = typeFilter.value;
+        
+        examCards.forEach(card => {
+            const statusMatch = !status || card.dataset.status === status;
+            const typeMatch = !type || card.dataset.type === type;
+            
+            card.style.display = statusMatch && typeMatch ? '' : 'none';
+        });
+    }
+    
+    statusFilter.addEventListener('change', applyFilters);
+    typeFilter.addEventListener('change', applyFilters);
+    
+    resetButton.addEventListener('click', function() {
+        statusFilter.value = '';
+        typeFilter.value = '';
+        examCards.forEach(card => card.style.display = '');
+    });
+});
+</script> 

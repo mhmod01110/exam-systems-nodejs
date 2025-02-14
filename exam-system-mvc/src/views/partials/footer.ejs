@@ -1,0 +1,42 @@
+<footer class="footer mt-auto py-3 bg-light">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <p class="mb-0 text-muted">
+                    &copy; <%= new Date().getFullYear() %> Exam System. All rights reserved.
+                </p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <a href="/about" class="text-muted text-decoration-none me-3">About</a>
+                <a href="/contact" class="text-muted text-decoration-none me-3">Contact</a>
+                <a href="/privacy" class="text-muted text-decoration-none me-3">Privacy Policy</a>
+                <a href="/terms" class="text-muted text-decoration-none">Terms of Service</a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<style>
+.footer {
+    position: relative;
+    bottom: 0;
+    width: 100%;
+    border-top: 1px solid #dee2e6;
+}
+
+@media (min-width: 768px) {
+    body {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    main {
+        flex: 1 0 auto;
+    }
+    
+    .footer {
+        flex-shrink: 0;
+    }
+}
+</style> 

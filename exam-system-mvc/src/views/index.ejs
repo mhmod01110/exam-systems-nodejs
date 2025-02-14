@@ -1,0 +1,189 @@
+<div class="container mt-5">
+    <% if (!user) { %>
+        <!-- Guest View -->
+        <div class="text-center">
+            <h1 class="display-4 mb-4">Welcome to Online Exam System</h1>
+            <p class="lead mb-4">A comprehensive platform for online examinations and assessments</p>
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="d-grid gap-3">
+                        <a href="/login" class="btn btn-primary btn-lg">Login</a>
+                        <a href="/register" class="btn btn-outline-primary btn-lg">Register</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <% } else if (user.role === 'student') { %>
+        <!-- Student Dashboard -->
+        <div class="row">
+            <div class="col-md-12 mb-4">
+                <h2>Welcome, <%= user.firstName %>!</h2>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Quick Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="/exams" class="btn btn-primary">View Available Exams</a>
+                            <a href="/profile" class="btn btn-outline-primary">My Profile</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upcoming Exams -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Upcoming Exams</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group list-group-flush">
+                            <% if (typeof upcomingExams !== 'undefined' && upcomingExams.length > 0) { %>
+                                <% upcomingExams.forEach(exam => { %>
+                                    <a href="/exams/<%= exam._id %>" class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h6 class="mb-1"><%= exam.title %></h6>
+                                            <small><%= new Date(exam.startTime).toLocaleDateString() %></small>
+                                        </div>
+                                        <small class="text-muted">Duration: <%= exam.duration %> minutes</small>
+                                    </a>
+                                <% }) %>
+                            <% } else { %>
+                                <p class="text-muted mb-0">No upcoming exams</p>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Results -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Recent Results</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group list-group-flush">
+                            <% if (typeof recentResults !== 'undefined' && recentResults.length > 0) { %>
+                                <% recentResults.forEach(result => { %>
+                                    <a href="/exams/<%= result.examId %>/results/<%= result._id %>" class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h6 class="mb-1"><%= result.examTitle %></h6>
+                                            <small class="text-<%= result.score >= result.passingScore ? 'success' : 'danger' %>">
+                                                <%= result.score %>%
+                                            </small>
+                                        </div>
+                                        <small class="text-muted"><%= new Date(result.submittedAt).toLocaleDateString() %></small>
+                                    </a>
+                                <% }) %>
+                            <% } else { %>
+                                <p class="text-muted mb-0">No recent results</p>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <% } else { %>
+        <!-- Teacher/Admin Dashboard -->
+        <div class="row">
+            <div class="col-md-12 mb-4">
+                <h2>Welcome, <%= user.firstName %>!</h2>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Quick Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="/exams/create" class="btn btn-primary">Create New Exam</a>
+                            <a href="/exams" class="btn btn-outline-primary">Manage Exams</a>
+                            <% if (user.role === 'admin') { %>
+                                <a href="/admin/users" class="btn btn-outline-primary">Manage Users</a>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Exams -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Recent Exams</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group list-group-flush">
+                            <% if (typeof recentExams !== 'undefined' && recentExams.length > 0) { %>
+                                <% recentExams.forEach(exam => { %>
+                                    <a href="/exams/<%= exam._id %>" class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h6 class="mb-1"><%= exam.title %></h6>
+                                            <small class="badge bg-<%= exam.isPublished ? 'success' : 'warning' %>">
+                                                <%= exam.isPublished ? 'Published' : 'Draft' %>
+                                            </small>
+                                        </div>
+                                        <small class="text-muted">
+                                            Questions: <%= exam.questions.length %> | 
+                                            Submissions: <%= exam.submissions.length %>
+                                        </small>
+                                    </a>
+                                <% }) %>
+                            <% } else { %>
+                                <p class="text-muted mb-0">No exams created yet</p>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Statistics</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Total Exams
+                                <span class="badge bg-primary rounded-pill">
+                                    <%= typeof totalExams !== 'undefined' ? totalExams : 0 %>
+                                </span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Total Questions
+                                <span class="badge bg-primary rounded-pill">
+                                    <%= typeof totalQuestions !== 'undefined' ? totalQuestions : 0 %>
+                                </span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Total Submissions
+                                <span class="badge bg-primary rounded-pill">
+                                    <%= typeof totalSubmissions !== 'undefined' ? totalSubmissions : 0 %>
+                                </span>
+                            </li>
+                            <% if (user.role === 'admin') { %>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Total Users
+                                    <span class="badge bg-primary rounded-pill">
+                                        <%= typeof totalUsers !== 'undefined' ? totalUsers : 0 %>
+                                    </span>
+                                </li>
+                            <% } %>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <% } %>
+</div>
+
