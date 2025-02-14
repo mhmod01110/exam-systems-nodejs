@@ -2,6 +2,7 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const AppError = require('../utils/AppError');
 
 // Configure nodemailer
 const transporter = nodemailer.createTransport({
@@ -21,22 +22,20 @@ exports.getLogin = (req, res) => {
     });
 };
 
-exports.postLogin = async (req, res) => {
+exports.postLogin = async (req, res, next) => {
     try {
         const { email, password } = req.body;
         
         // Find user
         const user = await User.findOne({ email });
         if (!user) {
-            req.flash('error', 'Invalid email or password');
-            return res.redirect('/auth/login');
+            throw new AppError('Invalid email or password', 401);
         }
         
         // Check password
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
-            req.flash('error', 'Invalid email or password');
-            return res.redirect('/auth/login');
+            throw new AppError('Invalid email or password', 401);
         }
         
         // Set session
@@ -52,9 +51,7 @@ exports.postLogin = async (req, res) => {
         
         res.redirect('/');
     } catch (error) {
-        console.error('Login error:', error);
-        req.flash('error', 'An error occurred during login');
-        res.redirect('/auth/login');
+        next(error);
     }
 };
 
@@ -65,21 +62,19 @@ exports.getRegister = (req, res) => {
     });
 };
 
-exports.postRegister = async (req, res) => {
+exports.postRegister = async (req, res, next) => {
     try {
         const { name, email, password, confirmPassword } = req.body;
         
         // Check if passwords match
         if (password !== confirmPassword) {
-            req.flash('error', 'Passwords do not match');
-            return res.redirect('/auth/register');
+            throw new AppError('Passwords do not match', 400);
         }
         
         // Check if user exists
         const existingUser = await User.findOne({ email });
         if (existingUser) {
-            req.flash('error', 'Email already registered');
-            return res.redirect('/auth/register');
+            throw new AppError('Email already registered', 400);
         }
         
         // Create new user
@@ -94,9 +89,7 @@ exports.postRegister = async (req, res) => {
         req.flash('success', 'Registration successful. Please login.');
         res.redirect('/auth/login');
     } catch (error) {
-        console.error('Registration error:', error);
-        req.flash('error', 'An error occurred during registration');
-        res.redirect('/auth/register');
+        next(error);
     }
 };
 
@@ -108,14 +101,13 @@ exports.getForgotPassword = (req, res) => {
     });
 };
 
-exports.postForgotPassword = async (req, res) => {
+exports.postForgotPassword = async (req, res, next) => {
     try {
         const { email } = req.body;
         const user = await User.findOne({ email });
         
         if (!user) {
-            req.flash('error', 'No account with that email address exists');
-            return res.redirect('/auth/forgot-password');
+            throw new AppError('No account with that email address exists', 404);
         }
         
         // Generate reset token
@@ -139,13 +131,11 @@ exports.postForgotPassword = async (req, res) => {
         req.flash('success', 'Check your email for password reset instructions');
         res.redirect('/auth/forgot-password');
     } catch (error) {
-        console.error('Forgot password error:', error);
-        req.flash('error', 'An error occurred while processing your request');
-        res.redirect('/auth/forgot-password');
+        next(error);
     }
 };
 
-exports.getResetPassword = async (req, res) => {
+exports.getResetPassword = async (req, res, next) => {
     try {
         const user = await User.findOne({
             resetPasswordToken: req.params.token,
@@ -153,8 +143,7 @@ exports.getResetPassword = async (req, res) => {
         });
         
         if (!user) {
-            req.flash('error', 'Password reset token is invalid or has expired');
-            return res.redirect('/auth/forgot-password');
+            throw new AppError('Password reset token is invalid or has expired', 400);
         }
         
         res.render('auth/reset-password', {
@@ -163,19 +152,16 @@ exports.getResetPassword = async (req, res) => {
             error: req.flash('error')
         });
     } catch (error) {
-        console.error('Reset password error:', error);
-        req.flash('error', 'An error occurred while processing your request');
-        res.redirect('/auth/forgot-password');
+        next(error);
     }
 };
 
-exports.postResetPassword = async (req, res) => {
+exports.postResetPassword = async (req, res, next) => {
     try {
         const { password, confirmPassword } = req.body;
         
         if (password !== confirmPassword) {
-            req.flash('error', 'Passwords do not match');
-            return res.redirect('back');
+            throw new AppError('Passwords do not match', 400);
         }
         
         const user = await User.findOne({
@@ -184,8 +170,7 @@ exports.postResetPassword = async (req, res) => {
         });
         
         if (!user) {
-            req.flash('error', 'Password reset token is invalid or has expired');
-            return res.redirect('/auth/forgot-password');
+            throw new AppError('Password reset token is invalid or has expired', 400);
         }
         
         user.password = password;
@@ -196,26 +181,21 @@ exports.postResetPassword = async (req, res) => {
         req.flash('success', 'Your password has been updated');
         res.redirect('/auth/login');
     } catch (error) {
-        console.error('Reset password error:', error);
-        req.flash('error', 'An error occurred while resetting your password');
-        res.redirect('back');
+        next(error);
     }
 };
 
-exports.logout = (req, res) => {
-    req.session.destroy(err => {
-        if (err) {
-            console.error('Logout error:', err);
-            // Handle error case
-            return res.status(500).render('error', {
-                title: 'Error',
-                message: 'An error occurred during logout',
-                csrfToken: req.csrfToken()
-            });
-        }
-        // Clear the session cookie
-        res.clearCookie('connect.sid');
-        // Redirect to login page with new csrf token
-        res.redirect('/auth/login');
-    });
+exports.logout = (req, res, next) => {
+    try {
+        req.session.destroy(err => {
+            if (err) {
+                return next(new AppError('An error occurred during logout', 500));
+            }
+            res.clearCookie('connect.sid');
+            res.clearCookie('_csrf');  // Clear CSRF cookie as well
+            res.redirect('/auth/login');
+        });
+    } catch (error) {
+        next(error);
+    }
 }; 

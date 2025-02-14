@@ -1,31 +1,36 @@
-<%- contentFor('body') %>
+<%- contentFor('content') %>
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card border-danger">
-                <div class="card-header bg-danger text-white">
-                    <h3 class="text-center mb-0">Error</h3>
-                </div>
-                <div class="card-body text-center">
-                    <div class="mb-4">
-                        <i class="fas fa-exclamation-triangle text-danger" style="font-size: 4rem;"></i>
-                    </div>
-                    
-                    <h4 class="text-danger mb-3"><%= message %></h4>
-                    
-                    <% if (process.env.NODE_ENV === 'development' && error.stack) { %>
-                        <div class="alert alert-danger text-start">
-                            <pre class="mb-0"><%= error.stack %></pre>
-                        </div>
-                    <% } %>
-                    
-                    <div class="mt-4">
-                        <a href="/" class="btn btn-primary me-2">Go Home</a>
-                        <button onclick="history.back()" class="btn btn-outline-secondary">Go Back</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md w-full space-y-8">
+    <div>
+      <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+        <% if (locals.title) { %>
+          <%= title %>
+        <% } else { %>
+          Oops! Something went wrong
+        <% } %>
+      </h2>
+      <div class="mt-4 text-center text-md text-gray-600">
+        <% if (locals.msg) { %>
+          <%= msg %>
+        <% } else { %>
+          An unexpected error occurred. Please try again later.
+        <% } %>
+      </div>
     </div>
+
+    <% if (process.env.NODE_ENV === 'development' && locals.error) { %>
+      <div class="mt-8 bg-red-50 p-4 rounded-md">
+        <div class="text-sm text-red-700">
+          <pre class="whitespace-pre-wrap"><%= JSON.stringify(error, null, 2) %></pre>
+        </div>
+      </div>
+    <% } %>
+
+    <div class="mt-8 text-center">
+      <a href="/" class="text-indigo-600 hover:text-indigo-500">
+        Return to Home Page
+      </a>
+    </div>
+  </div>
 </div> 

@@ -65,6 +65,9 @@
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form action="/auth/logout" method="POST" class="d-inline">
+                                    <% if (typeof csrfToken !== 'undefined') { %>
+                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                    <% } %>
                                     <button type="submit" class="dropdown-item text-danger">
                                         <i class="fas fa-sign-out-alt me-2"></i>Logout
                                     </button>

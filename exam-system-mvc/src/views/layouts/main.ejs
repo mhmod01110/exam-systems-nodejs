@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= typeof title !== 'undefined' ? title + ' - ' : '' %>Exam System</title>
     <!-- CSRF Token -->
+    <% if (typeof csrfToken !== 'undefined') { %>
     <meta name="csrf-token" content="<%= csrfToken %>">
+    <% } %>
     <!-- Security Headers -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">

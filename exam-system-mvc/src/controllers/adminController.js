@@ -2,9 +2,10 @@ const User = require('../models/User');
 const Exam = require('../models/Exam');
 const Result = require('../models/Result');
 const Department = require('../models/Department');
+const AppError = require('../utils/AppError');
 
 // Admin Dashboard
-exports.getDashboard = async (req, res) => {
+exports.getDashboard = async (req, res, next) => {
     try {
         // Get system statistics
         const stats = {
@@ -32,9 +33,7 @@ exports.getDashboard = async (req, res) => {
             recentExams
         });
     } catch (error) {
-        console.error('Admin dashboard error:', error);
-        req.flash('error', 'Error loading admin dashboard');
-        res.redirect('/');
+        next(error);
     }
 };
 
@@ -426,9 +425,15 @@ exports.getStudentProgress = async (req, res) => {
 };
 
 // Add new staff member
-exports.postAddStaff = async (req, res) => {
+exports.postAddStaff = async (req, res, next) => {
     try {
         const { firstName, lastName, email, role, departmentId } = req.body;
+
+        // Check if user exists first
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            throw new AppError('A user with this email already exists', 400);
+        }
 
         // Create new user
         const user = await User.create({
@@ -445,19 +450,17 @@ exports.postAddStaff = async (req, res) => {
         req.flash('success', 'Staff member added successfully');
         res.redirect('/admin/users');
     } catch (error) {
-        console.error('Error in postAddStaff:', error);
-        req.flash('error', error.message || 'Error adding staff member');
-        res.redirect('/admin/users');
+        next(error);
     }
 };
 
 // Toggle user status
-exports.postToggleUserStatus = async (req, res) => {
+exports.postToggleUserStatus = async (req, res, next) => {
     try {
         const user = await User.findById(req.params.id);
         
         if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+            throw new AppError('User not found', 404);
         }
 
         user.isActive = !user.isActive;
@@ -465,29 +468,24 @@ exports.postToggleUserStatus = async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        console.error('Error in postToggleUserStatus:', error);
-        res.status(500).json({ error: 'Error updating user status' });
+        next(error);
     }
 };
 
 // Export student progress as PDF
-exports.getExportPDF = async (req, res) => {
+exports.getExportPDF = async (req, res, next) => {
     try {
-        // TODO: Implement PDF export
-        res.status(501).send('PDF export not implemented yet');
+        throw new AppError('PDF export not implemented yet', 501);
     } catch (error) {
-        console.error('Error in getExportPDF:', error);
-        res.status(500).send('Error exporting PDF');
+        next(error);
     }
 };
 
 // Export student progress as Excel
-exports.getExportExcel = async (req, res) => {
+exports.getExportExcel = async (req, res, next) => {
     try {
-        // TODO: Implement Excel export
-        res.status(501).send('Excel export not implemented yet');
+        throw new AppError('Excel export not implemented yet', 501);
     } catch (error) {
-        console.error('Error in getExportExcel:', error);
-        res.status(500).send('Error exporting Excel');
+        next(error);
     }
 }; 

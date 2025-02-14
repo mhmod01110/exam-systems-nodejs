@@ -85,7 +85,11 @@ app.use(csrf({ cookie: true }));
 
 // Pass data to all views
 app.use((req, res, next) => {
-  res.locals.csrfToken = req.csrfToken();
+  // Only set CSRF token if the route is not excluded
+  if (!req.path.startsWith('/auth/logout')) {
+    res.locals.csrfToken = req.csrfToken();
+  }
+  
   res.locals.user = req.session.user || null;
   res.locals.currentPath = req.path;
   
@@ -117,26 +121,16 @@ app.use('/exams', examRoutes);
 app.use('/questions', questionRoutes);
 app.use('/', adminRoutes);
 
+const errorHandler = require('./src/middleware/errorHandler');
+
 // Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  if (err.code === 'EBADCSRFTOKEN') {
-    return res.status(403).render('error', {
-      message: 'Invalid CSRF token. Please try again.',
-      error: {}
-    });
-  }
-  res.status(err.status || 500).render('error', {
-    message: err.message,
-    error: process.env.NODE_ENV === 'development' ? err : {}
-  });
-});
+app.use(errorHandler);
 
 // 404 handler
 app.use((req, res) => {
   res.status(404).render('error', {
-    message: 'Page not found',
-    error: {}
+    title: '404 Not Found',
+    msg: 'The page you are looking for does not exist.'
   });
 });
 

@@ -48,6 +48,23 @@ const userSchema = new mongoose.Schema({
     timestamps: true
 });
 
+// Handle duplicate email error
+userSchema.post('save', function(error, doc, next) {
+    if (error.name === 'MongoServerError' && error.code === 11000) {
+        next(new Error('A user with this email already exists'));
+    } else {
+        next(error);
+    }
+});
+
+userSchema.post('update', function(error, doc, next) {
+    if (error.name === 'MongoServerError' && error.code === 11000) {
+        next(new Error('A user with this email already exists'));
+    } else {
+        next(error);
+    }
+});
+
 // Hash password before saving
 userSchema.pre('save', async function(next) {
     if (!this.isModified('password')) return next();
