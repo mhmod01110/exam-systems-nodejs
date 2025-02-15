@@ -7,131 +7,166 @@ const ExamAttempt = require('../models/ExamAttempt');
 // Get Dashboard
 exports.getDashboard = async (req, res) => {
     try {
-        const user = req.user;
-
-        // Initialize stats object
-        let stats = {
-            totalExams: 0,
-            averageScore: 0,
-            examsPassed: 0,
-            examsFailed: 0
-        };
-
-        if (user.role === 'student') {
-            // Get all results for this student
-            const results = await Result.find({ studentId: user._id })
-                .populate('examId');
-
-            // Calculate statistics
-            stats.totalExams = results.length;
-            
-            if (stats.totalExams > 0) {
-                // Calculate average score
-                const totalPercentage = results.reduce((sum, result) => sum + result.percentage, 0);
-                stats.averageScore = (totalPercentage / stats.totalExams).toFixed(2);
-
-                // Count passed and failed exams
-                stats.examsPassed = results.filter(result => result.status === 'PASS').length;
-                stats.examsFailed = results.filter(result => result.status === 'FAIL').length;
-            }
-
-            // Get recent exam attempts
-            const recentAttempts = await ExamAttempt.find({ student: user._id })
-            .populate('exam')
-                .sort({ createdAt: -1 })
-            .limit(5);
-
-            // Get upcoming exams
-            const upcomingExams = await Exam.find({
-                status: 'PUBLISHED',
-                startDate: { $gt: new Date() },
-                $or: [
-                    { isPublic: true },
-                    { allowedStudents: user._id }
-                ]
-            }).limit(5);
-
-            res.render('dashboard', {
-                title: 'Dashboard',
-                user,
-                stats,
-                recentAttempts,
-                upcomingExams
-            });
-        } else if (user.role === 'teacher') {
-            // Get statistics for teacher
-            const exams = await Exam.find({ createdBy: user._id });
-            stats.totalExams = exams.length;
-
-            // Get all results for exams created by this teacher
-            const results = await Result.find({
-                examId: { $in: exams.map(exam => exam._id) }
-            });
-
-            if (results.length > 0) {
-                const totalPercentage = results.reduce((sum, result) => sum + result.percentage, 0);
-                stats.averageScore = (totalPercentage / results.length).toFixed(2);
-                stats.examsPassed = results.filter(result => result.status === 'PASS').length;
-                stats.examsFailed = results.filter(result => result.status === 'FAIL').length;
-            }
-
-            // Get recent submissions
-            const recentSubmissions = await Submission.find({
-                examId: { $in: exams.map(exam => exam._id) }
-            })
-            .populate('examId')
-            .populate('studentId', 'username firstName lastName')
-            .sort({ submittedAt: -1 })
-            .limit(5);
-
-            // Get active exams
-            const activeExams = await Exam.find({
-                createdBy: user._id,
-                status: 'PUBLISHED',
-                startDate: { $lte: new Date() },
-                endDate: { $gte: new Date() }
-            }).limit(5);
-
-            res.render('dashboard', {
-                title: 'Dashboard',
-                user,
-                stats,
-                recentSubmissions,
-                activeExams
-            });
-        } else if (user.role === 'admin') {
-            // Get overall system statistics
-            stats.totalExams = await Exam.countDocuments();
-            const results = await Result.find();
-            
-            if (results.length > 0) {
-                const totalPercentage = results.reduce((sum, result) => sum + result.percentage, 0);
-                stats.averageScore = (totalPercentage / results.length).toFixed(2);
-                stats.examsPassed = results.filter(result => result.status === 'PASS').length;
-                stats.examsFailed = results.filter(result => result.status === 'FAIL').length;
-            }
-
-            // Get recent activity
-            const recentActivity = await Submission.find()
-                .populate('examId')
-                .populate('studentId', 'username firstName lastName')
-                .sort({ submittedAt: -1 })
-                .limit(10);
-
-            res.render('dashboard', {
-                title: 'Dashboard',
-                user,
-                stats,
-                recentActivity
-            });
+      const user = req.user;
+  
+      // Initialize stats object
+      let stats = {
+        totalExams: 0,
+        averageScore: 0,
+        examsPassed: 0,
+        examsFailed: 0
+      };
+  
+      if (user.role === 'student') {
+        // Get all results for this student
+        const results = await Result.find({ studentId: user._id })
+          .populate('examId');
+  
+        // Get all submissions for this student
+        const submissions = await Submission.find({ studentId: user._id })
+          .populate('examId');
+  
+        // Calculate statistics
+        stats.totalExams = results.length;
+        
+        if (stats.totalExams > 0) {
+          // Calculate average score
+          const totalPercentage = results.reduce((sum, result) => sum + result.percentage, 0);
+          stats.averageScore = (totalPercentage / stats.totalExams).toFixed(2);
+  
+          // Count passed and failed exams
+          stats.examsPassed = results.filter(result => result.status === 'PASS').length;
+          stats.examsFailed = results.filter(result => result.status === 'FAIL').length;
         }
+  
+        // Get recent exam attempts
+        const recentAttempts = await ExamAttempt.find({ student: user._id })
+          .populate('exam')
+          .sort({ createdAt: -1 })
+          .limit(5);
+  
+        // Get upcoming exams
+        const upcomingExams = await Exam.find({
+          status: 'PUBLISHED',
+          startDate: { $gt: new Date() },
+          $or: [
+            { isPublic: true },
+            { allowedStudents: user._id }
+          ]
+        }).limit(5);
+  
+        // --- Attach result to each recent attempt ---
+        // Build a map for submissions keyed by "examId_attemptNumber"
+        const submissionMap = {};
+        submissions.forEach(sub => {
+          // Ensure examId is populated; if not, use sub.examId directly
+          const examId = sub.examId && sub.examId._id ? sub.examId._id.toString() : sub.examId.toString();
+          const key = `${examId}_${sub.attemptNumber}`;
+          submissionMap[key] = sub;
+        });
+  
+        // Build a map for results keyed by submissionId
+        const resultMap = {};
+        results.forEach(result => {
+          if (result.submissionId) {
+            resultMap[result.submissionId.toString()] = result;
+          }
+        });
+  
+        // For each recent attempt, find its submission (matching exam and attemptNumber)
+        // and then attach the corresponding result if it exists.
+        recentAttempts.forEach(attempt => {
+          const examId = attempt.exam && attempt.exam._id ? attempt.exam._id.toString() : attempt.exam.toString();
+          const key = `${examId}_${attempt.attemptNumber}`;
+          const submission = submissionMap[key];
+          if (submission) {
+            const result = resultMap[submission._id.toString()];
+            if (result) {
+              attempt.result = result;
+            }
+          }
+        });
+        // --- End attaching result ---
+  
+        res.render('dashboard', {
+          title: 'Dashboard',
+          user,
+          stats,
+          recentAttempts,
+          upcomingExams,
+          submissions,
+          results
+        });
+      } else if (user.role === 'teacher') {
+        // ... teacher code remains unchanged ...
+        const exams = await Exam.find({ createdBy: user._id });
+        stats.totalExams = exams.length;
+  
+        const results = await Result.find({
+          examId: { $in: exams.map(exam => exam._id) }
+        });
+  
+        if (results.length > 0) {
+          const totalPercentage = results.reduce((sum, result) => sum + result.percentage, 0);
+          stats.averageScore = (totalPercentage / results.length).toFixed(2);
+          stats.examsPassed = results.filter(result => result.status === 'PASS').length;
+          stats.examsFailed = results.filter(result => result.status === 'FAIL').length;
+        }
+  
+        const recentSubmissions = await Submission.find({
+          examId: { $in: exams.map(exam => exam._id) }
+        })
+          .populate('examId')
+          .populate('studentId', 'username firstName lastName')
+          .sort({ submittedAt: -1 })
+          .limit(5);
+  
+        const activeExams = await Exam.find({
+          createdBy: user._id,
+          status: 'PUBLISHED',
+          startDate: { $lte: new Date() },
+          endDate: { $gte: new Date() }
+        }).limit(5);
+  
+        res.render('dashboard', {
+          title: 'Dashboard',
+          user,
+          stats,
+          recentSubmissions,
+          activeExams
+        });
+      } else if (user.role === 'admin') {
+        // ... admin code remains unchanged ...
+        stats.totalExams = await Exam.countDocuments();
+        const results = await Result.find();
+        
+        if (results.length > 0) {
+          const totalPercentage = results.reduce((sum, result) => sum + result.percentage, 0);
+          stats.averageScore = (totalPercentage / results.length).toFixed(2);
+          stats.examsPassed = results.filter(result => result.status === 'PASS').length;
+          stats.examsFailed = results.filter(result => result.status === 'FAIL').length;
+        }
+  
+        const recentActivity = await Submission.find()
+          .populate('examId')
+          .populate('studentId', 'username firstName lastName')
+          .sort({ submittedAt: -1 })
+          .limit(10);
+  
+        res.render('dashboard', {
+          title: 'Dashboard',
+          user,
+          stats,
+          recentActivity
+        });
+      }
     } catch (error) {
-        console.error('Error in getDashboard:', error);
-        req.flash('error', 'Error loading dashboard');
-        res.redirect('/');
+      console.error('Error in getDashboard:', error);
+      req.flash('error', 'Error loading dashboard');
+      res.redirect('/');
     }
-};
-
+  };
+  
 // Get Profile
 exports.getProfile = async (req, res) => {
     try {

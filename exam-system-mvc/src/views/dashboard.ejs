@@ -105,7 +105,7 @@
                                                 <a href="/exams/<%= attempt.exam._id %>/attempt/<%= attempt._id %>" 
                                                    class="btn btn-sm btn-primary">Continue</a>
                                             <% } else if (attempt.status === 'SUBMITTED') { %>
-                                                <a href="/exams/<%= attempt.exam._id %>/results %>" 
+                                                <a href="/exams/<%= attempt.exam._id %>/results/<%= attempt.result._id %>"
                                                    class="btn btn-sm btn-info">View Results</a>
                                             <% } %>
                                         </td>
