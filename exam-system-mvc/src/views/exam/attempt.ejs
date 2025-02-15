@@ -1,16 +1,16 @@
 <div class="container">
     <!-- Previous header code remains the same -->
-    
     <div class="row">
-      <div class="col-12 mb-4">
-        <div class="card">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center">
-              <h3 class="mb-0"><%= attempt.exam.title %></h3>
-              <div class="d-flex align-items-center">
-                <div class="me-4">
-                  <strong>Time Remaining:</strong>
-                  <span id="timer" data-end-time="<%= attempt.endTime %>"></span>
+        <div class="col-12 mb-4">
+          <div class="card">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0"><%= attempt.exam.title %></h3>
+                <div class="d-flex align-items-center">
+                  <div class="me-4">
+                    <strong>Time Remaining:</strong>
+                    <span id="timer" data-end-time="<%= new Date(attempt.endTime).toISOString() %>">Calculating...</span>
+                </div>
                 </div>
               </div>
             </div>
@@ -138,8 +138,8 @@
   }
 </style>
 
-<script>
-  const attempt = JSON.parse('<%- JSON.stringify(attempt) %>');
+<script defer>
+//   const attempt = JSON.parse('<%- JSON.stringify(attempt) %>');
   
   document.addEventListener('DOMContentLoaded', function() {
     const timerElement = document.getElementById('timer');
@@ -282,4 +282,45 @@
   
     examForm.addEventListener('submit', validateForm);
   });
+
+  // Timer and form validation logic
+document.addEventListener('DOMContentLoaded', function() {
+  const timerElement = document.getElementById('timer');
+  const endTimeString = timerElement.dataset.endTime;
+  
+  function updateTimer() {
+    const now = new Date().getTime();
+    const endTime = new Date(endTimeString).getTime();
+    const timeDiff = endTime - now;
+
+    if (timeDiff <= 0) {
+      timerElement.textContent = "00:00:00";
+      document.getElementById('examForm').submit(); // Auto-submit when time is up
+      return;
+    }
+
+    // Calculate hours, minutes, seconds
+    const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+    const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+
+    // Format with leading zeros
+    const formattedTime = [hours, minutes, seconds]
+      .map(unit => unit.toString().padStart(2, '0'))
+      .join(':');
+
+    timerElement.textContent = formattedTime;
+  }
+
+  // Start the timer if we have a valid end time
+  if (endTimeString) {
+    updateTimer(); // Run immediately
+    setInterval(updateTimer, 1000); // Update every second
+  } else {
+    timerElement.textContent = "Invalid time";
+    console.error("No end time provided");
+  }
+});
 </script>
+
+

@@ -32,9 +32,8 @@ app.use(expressLayouts);
 app.set('layout', 'layouts/main');
 app.set('layout extractScripts', true);
 app.set('layout extractStyles', true);
-
-// Add these lines for layout configuration
 app.set('layout extractMetas', true);
+
 app.locals.defineContent = function(name) {
     return `<%- defineContent('${name}') %>`;
 };
@@ -59,6 +58,8 @@ app.use(helmet({
       imgSrc: ["'self'", 'data:', 'https:'],
     },
   },
+  frameguard: { action: 'sameorigin' },  // Fix for X-Frame-Options issue
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 }));
 
 // Session configuration
@@ -73,7 +74,9 @@ app.use(session({
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 1 day
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
+    sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
+    partitioned: process.env.NODE_ENV === 'production', // Helps with cross-site cookie behavior
   }
 }));
 
@@ -85,7 +88,6 @@ app.use(csrf({ cookie: true }));
 
 // Pass data to all views
 app.use((req, res, next) => {
-  // Only set CSRF token if the route is not excluded
   if (!req.path.startsWith('/auth/logout')) {
     res.locals.csrfToken = req.csrfToken();
   }
@@ -93,16 +95,10 @@ app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   res.locals.currentPath = req.path;
   
-  // Get flash messages
-  const success = req.flash('success');
-  const error = req.flash('error');
-  const info = req.flash('info');
-  
-  // Only set messages if they exist
   res.locals.messages = {
-    success: success.length > 0 ? success : null,
-    error: error.length > 0 ? error : null,
-    info: info.length > 0 ? info : null
+    success: req.flash('success') || null,
+    error: req.flash('error') || null,
+    info: req.flash('info') || null
   };
   
   next();
@@ -134,9 +130,10 @@ app.use((req, res) => {
   });
 });
 
+// Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
-module.exports = app; 
+module.exports = app;
