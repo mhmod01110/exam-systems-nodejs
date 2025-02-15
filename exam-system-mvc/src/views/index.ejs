@@ -1,8 +1,4 @@
 <div class="container mt-5">
-    <div class="col-md-12 mb-4">
-        <h2>Welcome, <%= user.firstName.toUpperCase() %>!</h2>
-    </div>
-
     <% if (!user) { %>
         <!-- Guest View -->
         <div class="text-center">
@@ -74,7 +70,8 @@
                                     <a href="/exams/<%= result.examId._id %>/results/<%= result._id.toString() %>" class="list-group-item list-group-item-action">
                                         <div class="d-flex w-100 justify-content-between">
                                             <h6 class="mb-1"><%= result.examTitle %></h6>
-                                            <span class="badge bg-<%= result.score >= result.passingScore ? 'success' : 'danger' %> px-2">
+                                            <span class="badge bg-<%= result.status === 'PASS' ? 'success' : 'danger' %>
+                                                px-2">
                                                 <%= result.percentage.toFixed(1) %>%
                                             </span>
                                         </div>

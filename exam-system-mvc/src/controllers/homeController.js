@@ -9,7 +9,7 @@ exports.getHome = async (req, res) => {
         // If user is not logged in, render the guest view
         if (!req.session.user) {
             return res.render('index', {
-                title: 'Welcome',
+                title: 'Welcome to Online Exam System',
                 user: null
             });
         }
@@ -18,9 +18,9 @@ exports.getHome = async (req, res) => {
         if (req.session.user.role === 'student') {
             // Get upcoming exams (published exams that haven't started yet)
             const upcomingExams = await Exam.find({
-                isPublished: true,
-                startTime: { $gt: new Date() }
-            }).sort({ startTime: 1 }).limit(5);
+                status: 'PUBLISHED',
+                startDate: { $gt: new Date() }
+            }).sort({ startDate: 1 }).limit(5);
         
             // Get recent results
             const recentResults = await Result.find({
