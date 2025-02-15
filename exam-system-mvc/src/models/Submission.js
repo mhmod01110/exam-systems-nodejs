@@ -24,6 +24,31 @@ const mcqAnswerSchema = new mongoose.Schema({
     }
 });
 
+// New schema for True/False answers
+const tfAnswerSchema = new mongoose.Schema({
+    questionId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Question',
+        required: [true, "Question ID is required"]
+    },
+    answer: {
+        type: String,
+        required: [true, "Answer is required"]
+    },
+    isCorrect: {
+        type: Boolean,
+        default: false
+    },
+    marksObtained: {
+        type: Number,
+        default: 0
+    },
+    timeSpent: {
+        type: Number, // in seconds
+        default: 0
+    }
+});
+
 const projectSubmissionSchema = new mongoose.Schema({
     fileUrl: {
         type: String,
@@ -95,7 +120,7 @@ const submissionSchema = new mongoose.Schema({
     submissionType: {
         type: String,
         enum: {
-            values: ['MCQ', 'PROJECT'],
+            values: ['MCQ', 'TF', 'MIXED', 'PROJECT'],
             message: "{VALUE} is not a valid submission type"
         },
         required: [true, "Submission type is required"]
@@ -107,6 +132,8 @@ const submissionSchema = new mongoose.Schema({
     },
     // For MCQ submissions
     answers: [mcqAnswerSchema],
+    // For True/False submissions
+    tfAnswers: [tfAnswerSchema],
     // For Project submissions
     projectSubmission: projectSubmissionSchema,
     status: {
@@ -180,4 +207,4 @@ submissionSchema.pre('save', function(next) {
     next();
 });
 
-module.exports = mongoose.model('Submission', submissionSchema); 
+module.exports = mongoose.model('Submission', submissionSchema);

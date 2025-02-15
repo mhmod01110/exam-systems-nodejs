@@ -451,157 +451,177 @@ exports.getExamAttempt = async (req, res) => {
 // Submit exam attempt
 exports.submitExamAttempt = async (req, res) => {
     try {
-        const attempt = await ExamAttempt.findById(req.params.attemptId)
-            .populate({
-                path: 'exam',
-                populate: { path: 'questions' } // Ensure questions are populated!
-            })
-            .populate({
-                path: 'questions.question',
-                populate: {
-                    path: 'options'
-                }
-            });
-        
-        if (!attempt) {
-            req.flash('error', 'Exam attempt not found');
-            return res.redirect('/exams');
-        }
-        
-        // Check if this attempt belongs to the student
-        if (attempt.student.toString() !== req.user._id.toString()) {
-            req.flash('error', 'Not authorized to submit this attempt');
-            return res.redirect('/exams');
-        }
-        
-        // Check if attempt is already submitted or expired
-        if (attempt.status !== 'IN_PROGRESS') {
-            req.flash('error', 'This attempt has already been submitted or expired');
-            return res.redirect(`/exams/${attempt.exam._id}`);
-        }
-        
-        // Check if attempt is still within time limit
-        const now = new Date();
-        if (now > attempt.endTime) {
-            attempt.status = 'EXPIRED';
-            await attempt.save();
-            req.flash('error', 'Exam time has expired');
-            return res.redirect(`/exams/${attempt.exam._id}`);
-        }
-        
-        let totalMarks = 0;
-        const mcqAnswers = [];
-        
-        // Process answers and calculate marks for each question
-        for (const questionAttempt of attempt.questions) {
-            const question = questionAttempt.question;
-            const answer = req.body[`answer_${question._id}`];
-            
-            if (!answer) continue;
-            
-            questionAttempt.answer = answer;
-            let isCorrect = false;
-            let marksObtained = 0;
-            let selectedOption = null;
-            
-            // Auto-grade MCQ and True/False questions
-            if (['MCQ', 'TrueFalse'].includes(question.type)) {
-                if (question.type === 'MCQ') {
-                    const correctOption = question.options.find(opt => opt.isCorrect);
-                    selectedOption = answer; // For MCQ, answer is already the option ObjectId
-                    isCorrect = answer === correctOption._id.toString();
-                    marksObtained = isCorrect ? question.marks : 0;
-                } else if (question.type === 'TrueFalse') {
-                    // For True/False, we need to find the corresponding option
-                    const selectedTrueFalseOption = question.options.find(opt => 
-                        opt.text.toLowerCase() === answer.toLowerCase()
-                    );
-                    if (selectedTrueFalseOption) {
-                        selectedOption = selectedTrueFalseOption._id;
-                        isCorrect = answer.toLowerCase() === question.correctAnswer.toLowerCase();
-                        marksObtained = isCorrect ? question.marks : 0;
-                    }
-                }
-                
-                if (selectedOption) {
-                    mcqAnswers.push({
-                        questionId: question._id,
-                        selectedOption: selectedOption, // This is now always an ObjectId
-                        isCorrect,
-                        marksObtained,
-                        timeSpent: 0 // You may want to track this separately if needed
-                    });
-                    
-                    totalMarks += marksObtained;
-                }
-            }
-            
-            // Update the attempt's question marks
-            questionAttempt.marks = marksObtained;
-        }
-        
-        // Create submission record for the entire exam attempt
-        const submission = await Submission.create({
-            examId: attempt.exam._id,
-            studentId: req.user._id,
-            submissionType: 'MCQ',
-            attemptNumber: attempt.attemptNumber,
-            answers: mcqAnswers,
-            status: 'SUBMITTED',
-            totalMarksObtained: totalMarks,
-            submittedAt: now,
-            startedAt: attempt.startTime,
-            completedAt: now,
-            ipAddress: req.ip,
-            browserInfo: req.headers['user-agent'],
-            isLate: now > attempt.exam.endDate
+      const attempt = await ExamAttempt.findById(req.params.attemptId)
+        .populate({
+          path: 'exam',
+          populate: { path: 'questions' } // Ensure questions are populated!
+        })
+        .populate({
+          path: 'questions.question',
+          populate: {
+            path: 'options'
+          }
         });
-
-        // Update attempt
-        attempt.status = 'SUBMITTED';
-        attempt.submittedAt = now;
-        attempt.totalMarks = totalMarks;
+  
+      if (!attempt) {
+        req.flash('error', 'Exam attempt not found');
+        return res.redirect('/exams');
+      }
+  
+      // Check if this attempt belongs to the student
+      if (attempt.student.toString() !== req.user._id.toString()) {
+        req.flash('error', 'Not authorized to submit this attempt');
+        return res.redirect('/exams');
+      }
+  
+      // Check if attempt is already submitted or expired
+      if (attempt.status !== 'IN_PROGRESS') {
+        req.flash('error', 'This attempt has already been submitted or expired');
+        return res.redirect(`/exams/${attempt.exam._id}`);
+      }
+  
+      // Check if attempt is still within time limit
+      const now = new Date();
+      if (now > attempt.endTime) {
+        attempt.status = 'EXPIRED';
         await attempt.save();
-        console.log("Whole Exam total marks: ", attempt.exam.totalMarks);
-        console.log("Total marks obtained: ", totalMarks);
-        // Create result record
-        const result = await Result.create({
-            examId: attempt.exam._id,
-            studentId: req.user._id,
-            submissionId: submission._id,
-            totalMarks: attempt.exam.totalMarks,
-            obtainedMarks: totalMarks,
-            percentage: (totalMarks / attempt.exam.totalMarks) * 100,
-            status: totalMarks >= attempt.exam.passingMarks ? 'PASS' : 'FAIL',
-            questionResults: mcqAnswers.map(answer => ({
-                questionId: answer.questionId,
-                obtainedMarks: answer.marksObtained,
-                totalMarks: attempt.questions.find(q => 
-                    q.question._id.toString() === answer.questionId.toString()
-                ).question.marks,
-                isCorrect: answer.isCorrect,
-                timeTaken: answer.timeSpent
-            })),
-            analytics: {
-                timeSpent: Math.floor((now - attempt.startTime) / 1000),
-                attemptsCount: attempt.attemptNumber,
-                correctAnswers: mcqAnswers.filter(a => a.isCorrect).length,
-                incorrectAnswers: mcqAnswers.filter(a => !a.isCorrect).length,
-                skippedQuestions: attempt.questions.length - mcqAnswers.length,
-                accuracyRate: mcqAnswers.length > 0 ? 
-                    (mcqAnswers.filter(a => a.isCorrect).length / mcqAnswers.length) * 100 : 0
-            }
-        });
-        
-        
-        req.flash('success', 'Exam submitted successfully');
-        res.redirect(`/exams/${attempt.exam._id}`);
+        req.flash('error', 'Exam time has expired');
+        return res.redirect(`/exams/${attempt.exam._id}`);
+      }
+  
+      let totalMarks = 0;
+      const mcqAnswers = []; // For MCQ questions (will include selectedOption)
+      const tfAnswers = [];  // For True/False questions (use answer field)
+  
+      // Process answers and calculate marks for each question
+      for (const questionAttempt of attempt.questions) {
+        const question = questionAttempt.question;
+        const answer = req.body[`answer_${question._id}`];
+  
+        if (!answer) continue;
+  
+        // Save the raw answer for reference
+        questionAttempt.answer = answer;
+        let isCorrect = false;
+        let marksObtained = 0;
+        let selectedOption = null;
+  
+        if (question.type === 'MCQ') {
+          // For MCQ, compare the answer (option id) with the correct option's id
+          const correctOption = question.options.find(opt => opt.isCorrect);
+          selectedOption = answer; // answer is already the option ObjectId (as string)
+          isCorrect = answer === correctOption._id.toString();
+          marksObtained = isCorrect ? question.marks : 0;
+  
+          mcqAnswers.push({
+            questionId: question._id,
+            selectedOption, // This will satisfy the Submission schema
+            isCorrect,
+            marksObtained,
+            timeSpent: 0 // Track if needed
+          });
+          totalMarks += marksObtained;
+        } else if (question.type === 'TrueFalse') {
+          // For True/False, compare the provided answer with the correctAnswer string
+          console.log("Processing True/False Question:", question.text);
+          console.log("Correct Answer:", question.correctAnswer);
+          console.log("User Answer:", answer);
+  
+          // Normalize the answers
+          isCorrect = answer.trim().toLowerCase() === question.correctAnswer.trim().toLowerCase();
+          marksObtained = isCorrect ? question.marks : 0;
+  
+          tfAnswers.push({
+            questionId: question._id,
+            answer: answer.trim().toLowerCase(), // Store the T/F answer directly
+            isCorrect,
+            marksObtained,
+            timeSpent: 0 // Track if needed
+          });
+          totalMarks += marksObtained;
+        }
+  
+        // Update the attempt's question marks
+        questionAttempt.marks = marksObtained;
+      }
+  
+      // Create submission record.
+      // Here, we assume your Submission schema has been updated to include a separate field for tfAnswers.
+      const submission = await Submission.create({
+        examId: attempt.exam._id,
+        studentId: req.user._id,
+        submissionType: 'MIXED', // Indicate that there are both MCQ and True/False questions
+        attemptNumber: attempt.attemptNumber,
+        answers: mcqAnswers,  // MCQ answers (with selectedOption)
+        tfAnswers: tfAnswers, // True/False answers (with answer)
+        status: 'SUBMITTED',
+        totalMarksObtained: totalMarks,
+        submittedAt: now,
+        startedAt: attempt.startTime,
+        completedAt: now,
+        ipAddress: req.ip,
+        browserInfo: req.headers['user-agent'],
+        isLate: now > attempt.exam.endDate
+      });
+  
+      // Update exam attempt
+      attempt.status = 'SUBMITTED';
+      attempt.submittedAt = now;
+      attempt.totalMarks = totalMarks;
+      await attempt.save();
+  
+      console.log("Whole Exam total marks: ", attempt.exam.totalMarks);
+      console.log("Total marks obtained: ", totalMarks);
+  
+      // For result creation, combine both types of answers.
+      const combinedAnswers = [
+        ...mcqAnswers,
+        ...tfAnswers.map(tf => ({
+          questionId: tf.questionId,
+          marksObtained: tf.marksObtained,
+          isCorrect: tf.isCorrect,
+          timeTaken: tf.timeSpent,
+          answer: tf.answer // Include the raw answer for True/False if needed
+        }))
+      ];
+  
+      const result = await Result.create({
+        examId: attempt.exam._id,
+        studentId: req.user._id,
+        submissionId: submission._id,
+        totalMarks: attempt.exam.totalMarks,
+        obtainedMarks: totalMarks,
+        percentage: (totalMarks / attempt.exam.totalMarks) * 100,
+        status: totalMarks >= attempt.exam.passingMarks ? 'PASS' : 'FAIL',
+        questionResults: combinedAnswers.map(answer => ({
+          questionId: answer.questionId,
+          obtainedMarks: answer.marksObtained,
+          totalMarks: attempt.questions.find(q =>
+            q.question._id.toString() === answer.questionId.toString()
+          ).question.marks,
+          isCorrect: answer.isCorrect,
+          timeTaken: answer.timeTaken
+        })),
+        analytics: {
+          timeSpent: Math.floor((now - attempt.startTime) / 1000),
+          attemptsCount: attempt.attemptNumber,
+          correctAnswers: combinedAnswers.filter(a => a.isCorrect).length,
+          incorrectAnswers: combinedAnswers.filter(a => !a.isCorrect).length,
+          skippedQuestions: attempt.questions.length - combinedAnswers.length,
+          accuracyRate: combinedAnswers.length > 0 ?
+            (combinedAnswers.filter(a => a.isCorrect).length / combinedAnswers.length) * 100 : 0
+        }
+      });
+  
+      req.flash('success', 'Exam submitted successfully');
+      res.redirect(`/exams/${attempt.exam._id}`);
     } catch (error) {
-        console.error('Error in submitExamAttempt:', error);
-        req.flash('error', 'Error submitting exam: ' + error.message);
-        res.redirect(`/exams/${req.params.id}/attempt/${req.params.attemptId}`);
+      console.error('Error in submitExamAttempt:', error);
+      req.flash('error', 'Error submitting exam: ' + error.message);
+      res.redirect(`/exams/${req.params.id}/attempt/${req.params.attemptId}`);
     }
-};
+  };
+  
 
 // Grade exam attempt (for essay and short answer questions)
 exports.gradeExamAttempt = async (req, res) => {
