@@ -211,3 +211,9 @@ body {
         content: none !important;
     }
 } 
+
+.question-unanswered {
+    background-color: #fff3cd !important;
+    border: 2px solid #ffc107 !important;
+    box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25) !important;
+  }

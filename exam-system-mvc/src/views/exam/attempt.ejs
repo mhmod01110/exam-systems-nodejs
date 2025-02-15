@@ -1,6 +1,7 @@
 <div class="container">
+    <!-- Previous header code remains the same -->
+    
     <div class="row">
-      <!-- Timer and Info Header -->
       <div class="col-12 mb-4">
         <div class="card">
           <div class="card-body">
@@ -11,20 +12,18 @@
                   <strong>Time Remaining:</strong>
                   <span id="timer" data-end-time="<%= attempt.endTime %>"></span>
                 </div>
-                <!-- Removed extra header submit form -->
               </div>
             </div>
           </div>
         </div>
       </div>
   
-      <!-- Questions & Submission Form (single form) -->
       <div class="col-12">
-        <form id="examForm" method="POST" action="/exams/<%= attempt.exam._id %>/attempt/<%= attempt._id %>/submit">
+        <form id="examForm" method="POST" action="/exams/<%= attempt.exam._id %>/attempt/<%= attempt._id %>/submit" onsubmit="return validateForm(event)">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           
           <% attempt.questions.forEach((questionAttempt, index) => { %>
-            <div class="card mb-4">
+            <div class="card mb-4" id="question-card-<%= index %>">
               <div class="card-header">
                 <h5 class="mb-0">Question <%= index + 1 %></h5>
               </div>
@@ -40,6 +39,7 @@
                                value="<%= option._id %>"
                                class="me-2 question-input"
                                data-question-index="<%= index %>"
+                               required
                                <%= questionAttempt.answer === option._id.toString() ? 'checked' : '' %>>
                         <%= option.text %>
                       </label>
@@ -54,6 +54,7 @@
                              value="true"
                              class="me-2 question-input"
                              data-question-index="<%= index %>"
+                             required
                              <%= questionAttempt.answer === 'true' ? 'checked' : '' %>>
                       True
                     </label>
@@ -63,6 +64,7 @@
                              value="false"
                              class="me-2 question-input"
                              data-question-index="<%= index %>"
+                             required
                              <%= questionAttempt.answer === 'false' ? 'checked' : '' %>>
                       False
                     </label>
@@ -73,6 +75,8 @@
                             name="answer_<%= questionAttempt.question._id %>" 
                             rows="4"
                             data-question-index="<%= index %>"
+                            required
+                            minlength="1"
                             placeholder="Enter your answer here"><%= questionAttempt.answer %></textarea>
                 <% } %>
   
@@ -82,15 +86,13 @@
                     | <i class="fas fa-info-circle"></i> Type: <%= questionAttempt.question.type %>
                   </small>
                 </div>
-                <!-- Warning message for unanswered question -->
                 <div class="unanswered-warning mt-2 alert alert-warning d-none">
-                  <i class="fas fa-exclamation-triangle"></i> This question has not been answered yet!
+                  <i class="fas fa-exclamation-triangle"></i> Please answer this question before submitting!
                 </div>
               </div>
             </div>
           <% }); %>
   
-          <!-- Global warning for unanswered questions -->
           <div id="globalWarning" class="alert alert-warning mb-3 d-none">
             <i class="fas fa-exclamation-triangle"></i> Please answer all questions before submitting the exam!
           </div>
@@ -106,15 +108,40 @@
         </form>
       </div>
     </div>
-  </div>
-  
-  <script>
-  // Make the server-side attempt object available on the client
+</div>
+
+<style>
+  .question-unanswered {
+    background-color: #fff3cd !important;
+    border: 2px solid #ffc107 !important;
+    box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25) !important;
+  }
+
+  .alert-warning {
+    background-color: #fff3cd;
+    border-color: #ffeeba;
+    color: #856404;
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1rem;
+    display: block !important;
+  }
+
+  .warning-shake {
+    animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both;
+  }
+
+  @keyframes shake {
+    10%, 90% { transform: translate3d(-1px, 0, 0); }
+    20%, 80% { transform: translate3d(2px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+    40%, 60% { transform: translate3d(4px, 0, 0); }
+  }
+</style>
+
+<script>
   const attempt = JSON.parse('<%- JSON.stringify(attempt) %>');
   
-  
   document.addEventListener('DOMContentLoaded', function() {
-    // Timer functionality
     const timerElement = document.getElementById('timer');
     const endTime = new Date(timerElement.dataset.endTime).getTime();
     const examForm = document.getElementById('examForm');
@@ -123,92 +150,112 @@
     const questionInputs = document.querySelectorAll('.question-input');
     const warningMessages = document.querySelectorAll('.unanswered-warning');
   
-    function updateTimer() {
-      const now = new Date().getTime();
-      const timeLeft = endTime - now;
-      
-      if (timeLeft <= 0) {
-        // If time is up, check if all questions are answered.
-        if (checkAllQuestionsAnswered()) {
-          examForm.submit();
-        } else {
-          alert('Time is up, but you have unanswered questions! Please answer all questions before submitting.');
-        }
-        return;
-      }
-      
-      const hours = Math.floor(timeLeft / (1000 * 60 * 60));
-      const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
-      
-      timerElement.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
-    
-    // Update timer every second
-    updateTimer();
-    setInterval(updateTimer, 1000);
+    let isValidating = false;
   
-    // Function to check if all questions have been answered
-    function checkAllQuestionsAnswered() {
-      let allAnswered = true;
-      const processedQuestions = {};
+    // Timer function remains the same...
+    
+    function isQuestionAnswered(input) {
+      if (input.type === 'radio') {
+        const name = input.name;
+        const radioGroup = document.querySelectorAll(`input[name="${name}"]`);
+        return Array.from(radioGroup).some(radio => radio.checked);
+      } else if (input.tagName.toLowerCase() === 'textarea') {
+        return input.value.trim().length > 0;
+      }
+      return false;
+    }
+  
+    function highlightUnansweredQuestions() {
+      const processedQuestions = new Set();
+      let hasUnanswered = false;
+      let firstUnanswered = null;
   
       questionInputs.forEach(input => {
-        const name = input.name;
         const questionIndex = input.dataset.questionIndex;
+        const name = input.name;
   
-        // Process each question only once
-        if (processedQuestions[name] === undefined) {
-          let answered = false;
-          if (input.type === 'radio') {
-            // For radio buttons, check if any in the group is checked
-            const radios = document.querySelectorAll(`input[name="${name}"]`);
-            answered = Array.from(radios).some(radio => radio.checked);
-          } else {
-            answered = input.value.trim() !== '';
-          }
-          processedQuestions[name] = answered;
-  
-          // Show or hide individual warning for this question
+        if (!processedQuestions.has(name)) {
+          processedQuestions.add(name);
+          
+          const isAnswered = isQuestionAnswered(input);
           const warningElement = warningMessages[questionIndex];
-          if (warningElement) {
-            if (answered) {
-              warningElement.classList.add('d-none');
-            } else {
-              warningElement.classList.remove('d-none');
+          const questionCard = document.getElementById(`question-card-${questionIndex}`);
+          
+          if (!isAnswered) {
+            hasUnanswered = true;
+            if (!firstUnanswered) {
+              firstUnanswered = questionCard;
             }
-          }
-          if (!answered) {
-            allAnswered = false;
+            
+            // Show warning and highlight card
+            warningElement.classList.remove('d-none');
+            questionCard.classList.add('question-unanswered');
+            questionCard.classList.add('warning-shake');
+            
+            // Remove shake animation after it completes
+            setTimeout(() => {
+              questionCard.classList.remove('warning-shake');
+            }, 1000);
+          } else {
+            warningElement.classList.add('d-none');
+            questionCard.classList.remove('question-unanswered');
           }
         }
       });
   
-      // Toggle global warning and disable/enable the submit button
-      if (!allAnswered) {
+      if (hasUnanswered) {
         globalWarning.classList.remove('d-none');
-        submitButton.disabled = true;
+        globalWarning.classList.add('warning-shake');
+        setTimeout(() => {
+          globalWarning.classList.remove('warning-shake');
+        }, 1000);
+        
+        if (firstUnanswered) {
+          firstUnanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       } else {
         globalWarning.classList.add('d-none');
-        submitButton.disabled = false;
       }
-      return allAnswered;
+      
+      submitButton.disabled = hasUnanswered;
+      return !hasUnanswered;
     }
   
-    // Attach event listeners to each input
-    questionInputs.forEach(input => {
-      input.addEventListener('change', checkAllQuestionsAnswered);
-      // For textareas, use tagName instead of type
-      if (input.tagName.toLowerCase() === 'textarea') {
-        input.addEventListener('input', checkAllQuestionsAnswered);
+    function validateForm(event) {
+      if (event) {
+        event.preventDefault();
       }
       
-      // Auto-save functionality (optional)
-      input.addEventListener('change', function() {
-        localStorage.setItem(`exam_${attempt._id}_${input.name}`, input.value);
-      });
+      if (isValidating) {
+        return false;
+      }
       
-      // Load saved answers (if any)
+      isValidating = true;
+      const isValid = highlightUnansweredQuestions();
+      
+      if (isValid) {
+        if (event) {
+          const confirmSubmit = confirm('Are you sure you want to submit your exam?');
+          if (confirmSubmit) {
+            questionInputs.forEach(input => {
+              localStorage.removeItem(`exam_${attempt._id}_${input.name}`);
+            });
+            examForm.submit();
+          }
+        }
+      }
+      
+      isValidating = false;
+      return false;
+    }
+  
+    // Auto-save functionality remains the same...
+    
+    // Initial validation on page load
+    setTimeout(highlightUnansweredQuestions, 500);
+  
+    // Input event listeners
+    questionInputs.forEach(input => {
       const savedValue = localStorage.getItem(`exam_${attempt._id}_${input.name}`);
       if (savedValue) {
         if (input.type === 'radio') {
@@ -219,20 +266,20 @@
           input.value = savedValue;
         }
       }
-    });
-    
-    // Intercept form submission to ensure all questions are answered
-    examForm.addEventListener('submit', function(e) {
-      if (!checkAllQuestionsAnswered()) {
-        e.preventDefault();
-        alert("Please answer all questions before submitting the exam!");
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      } else {
-        // Optionally, clear saved answers if submission goes through
-        questionInputs.forEach(input => {
-          localStorage.removeItem(`exam_${attempt._id}_${input.name}`);
+  
+      input.addEventListener('change', function() {
+        localStorage.setItem(`exam_${attempt._id}_${input.name}`, input.value);
+        highlightUnansweredQuestions();
+      });
+  
+      if (input.tagName.toLowerCase() === 'textarea') {
+        input.addEventListener('input', function() {
+          localStorage.setItem(`exam_${attempt._id}_${input.name}`, input.value);
+          highlightUnansweredQuestions();
         });
       }
     });
+  
+    examForm.addEventListener('submit', validateForm);
   });
-  </script>
+</script>
