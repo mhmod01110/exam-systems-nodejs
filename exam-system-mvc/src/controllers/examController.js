@@ -454,7 +454,7 @@ exports.submitExamAttempt = async (req, res) => {
       const attempt = await ExamAttempt.findById(req.params.attemptId)
         .populate({
           path: 'exam',
-          populate: { path: 'questions' } // Ensure questions are populated!
+          populate: { path: 'questions' }
         })
         .populate({
           path: 'questions.question',
@@ -491,7 +491,7 @@ exports.submitExamAttempt = async (req, res) => {
   
       let totalMarks = 0;
       const mcqAnswers = []; // For MCQ questions (will include selectedOption)
-      const tfAnswers = [];  // For True/False questions (use answer field)
+      const tfAnswers = [];
   
       // Process answers and calculate marks for each question
       for (const questionAttempt of attempt.questions) {
@@ -522,11 +522,6 @@ exports.submitExamAttempt = async (req, res) => {
           });
           totalMarks += marksObtained;
         } else if (question.type === 'TrueFalse') {
-          // For True/False, compare the provided answer with the correctAnswer string
-          console.log("Processing True/False Question:", question.text);
-          console.log("Correct Answer:", question.correctAnswer);
-          console.log("User Answer:", answer);
-  
           // Normalize the answers
           isCorrect = answer.trim().toLowerCase() === question.correctAnswer.trim().toLowerCase();
           marksObtained = isCorrect ? question.marks : 0;
@@ -545,76 +540,70 @@ exports.submitExamAttempt = async (req, res) => {
         questionAttempt.marks = marksObtained;
       }
   
-      // Create submission record.
-      // Here, we assume your Submission schema has been updated to include a separate field for tfAnswers.
-      const submission = await Submission.create({
-        examId: attempt.exam._id,
-        studentId: req.user._id,
-        submissionType: 'MIXED', // Indicate that there are both MCQ and True/False questions
-        attemptNumber: attempt.attemptNumber,
-        answers: mcqAnswers,  // MCQ answers (with selectedOption)
-        tfAnswers: tfAnswers, // True/False answers (with answer)
-        status: 'SUBMITTED',
-        totalMarksObtained: totalMarks,
-        submittedAt: now,
-        startedAt: attempt.startTime,
-        completedAt: now,
-        ipAddress: req.ip,
-        browserInfo: req.headers['user-agent'],
-        isLate: now > attempt.exam.endDate
-      });
-  
-      // Update exam attempt
-      attempt.status = 'SUBMITTED';
-      attempt.submittedAt = now;
-      attempt.totalMarks = totalMarks;
-      await attempt.save();
-  
-      console.log("Whole Exam total marks: ", attempt.exam.totalMarks);
-      console.log("Total marks obtained: ", totalMarks);
-  
-      // For result creation, combine both types of answers.
-      const combinedAnswers = [
-        ...mcqAnswers,
-        ...tfAnswers.map(tf => ({
-          questionId: tf.questionId,
-          marksObtained: tf.marksObtained,
-          isCorrect: tf.isCorrect,
-          timeTaken: tf.timeSpent,
-          answer: tf.answer // Include the raw answer for True/False if needed
-        }))
-      ];
-  
-      const result = await Result.create({
-        examId: attempt.exam._id,
-        studentId: req.user._id,
-        submissionId: submission._id,
-        totalMarks: attempt.exam.totalMarks,
-        obtainedMarks: totalMarks,
-        percentage: (totalMarks / attempt.exam.totalMarks) * 100,
-        status: totalMarks >= attempt.exam.passingMarks ? 'PASS' : 'FAIL',
-        questionResults: combinedAnswers.map(answer => ({
-          questionId: answer.questionId,
-          obtainedMarks: answer.marksObtained,
-          totalMarks: attempt.questions.find(q =>
-            q.question._id.toString() === answer.questionId.toString()
-          ).question.marks,
-          isCorrect: answer.isCorrect,
-          timeTaken: answer.timeTaken
-        })),
-        analytics: {
-          timeSpent: Math.floor((now - attempt.startTime) / 1000),
-          attemptsCount: attempt.attemptNumber,
-          correctAnswers: combinedAnswers.filter(a => a.isCorrect).length,
-          incorrectAnswers: combinedAnswers.filter(a => !a.isCorrect).length,
-          skippedQuestions: attempt.questions.length - combinedAnswers.length,
-          accuracyRate: combinedAnswers.length > 0 ?
-            (combinedAnswers.filter(a => a.isCorrect).length / combinedAnswers.length) * 100 : 0
+      try {
+        // Create submission record.
+        const submission = await Submission.create({
+          examId: attempt.exam._id,
+          studentId: req.user._id,
+          submissionType: 'MIXED', // Indicate that there are both MCQ and True/False questions
+          attemptNumber: attempt.attemptNumber,
+          answers: mcqAnswers,  // MCQ answers (with selectedOption)
+          tfAnswers: tfAnswers, // True/False answers (with answer)
+          status: 'SUBMITTED',
+          totalMarksObtained: totalMarks,
+          submittedAt: now,
+          startedAt: attempt.startTime,
+          completedAt: now,
+          ipAddress: req.ip,
+          browserInfo: req.headers['user-agent'],
+          isLate: now > attempt.exam.endDate
+        });
+
+        // Update exam attempt
+        attempt.status = 'SUBMITTED';
+        attempt.submittedAt = now;
+        attempt.totalMarks = totalMarks;
+        await attempt.save();
+
+        // Create result
+        const result = await Result.create({
+          examId: attempt.exam._id,
+          studentId: req.user._id,
+          submissionId: submission._id,
+          totalMarks: attempt.exam.totalMarks,
+          obtainedMarks: totalMarks,
+          percentage: (totalMarks / attempt.exam.totalMarks) * 100,
+          status: totalMarks >= attempt.exam.passingMarks ? 'PASS' : 'FAIL',
+          questionResults: [...mcqAnswers, ...tfAnswers].map(answer => ({
+            questionId: answer.questionId,
+            obtainedMarks: answer.marksObtained,
+            totalMarks: attempt.questions.find(q =>
+              q.question._id.toString() === answer.questionId.toString()
+            ).question.marks,
+            isCorrect: answer.isCorrect,
+            timeTaken: answer.timeTaken
+          })),
+          analytics: {
+            timeSpent: Math.floor((now - attempt.startTime) / 1000),
+            attemptsCount: attempt.attemptNumber,
+            correctAnswers: [...mcqAnswers, ...tfAnswers].filter(a => a.isCorrect).length,
+            incorrectAnswers: [...mcqAnswers, ...tfAnswers].filter(a => !a.isCorrect).length,
+            skippedQuestions: attempt.questions.length - (mcqAnswers.length + tfAnswers.length),
+            accuracyRate: (mcqAnswers.length + tfAnswers.length) > 0 ?
+              ([...mcqAnswers, ...tfAnswers].filter(a => a.isCorrect).length / (mcqAnswers.length + tfAnswers.length)) * 100 : 0
+          }
+        });
+
+        req.flash('success', 'Exam submitted successfully');
+        res.redirect(`/exams/${attempt.exam._id}`);
+      } catch (error) {
+        // Check for duplicate submission error
+        if (error.code === 11000 && error.message.includes('submissions index: examId_1_studentId_1_attemptNumber_1 dup key')) {
+          req.flash('error', 'This attempt has already been submitted. Multiple submissions are not allowed.');
+          return res.redirect(`/exams/${attempt.exam._id}`);
         }
-      });
-  
-      req.flash('success', 'Exam submitted successfully');
-      res.redirect(`/exams/${attempt.exam._id}`);
+        throw error; // Re-throw other errors
+      }
     } catch (error) {
       console.error('Error in submitExamAttempt:', error);
       req.flash('error', 'Error submitting exam: ' + error.message);
@@ -756,5 +745,95 @@ exports.getExamResultDetails = async (req, res) => {
         console.error('Error in getExamResultDetails:', error);
         req.flash('error', 'Error fetching exam result details');
         res.redirect('/exams');
+    }
+}; 
+
+// Get Submission Details
+exports.getSubmissionDetails = async (req, res) => {
+    try {
+        const { examId, submissionId } = req.params;
+
+        // Fetch the submission with all necessary data
+        const submission = await Submission.findById(submissionId)
+            .populate('studentId', 'username firstName lastName email')
+            .populate('examId')
+            .populate({
+                path: 'answers.questionId',
+                model: 'Question',
+                populate: {
+                    path: 'options'
+                }
+            })
+            .populate({
+                path: 'tfAnswers.questionId',
+                model: 'Question'
+            });
+
+        if (!submission) {
+            req.flash('error', 'Submission not found');
+            return res.redirect('/dashboard');
+        }
+
+        // Security check - only allow the teacher who created the exam or admin to view
+        if (submission.examId.createdBy.toString() !== req.user._id.toString() && 
+            req.user.role !== 'admin') {
+            req.flash('error', 'Not authorized to view this submission');
+            return res.redirect('/dashboard');
+        }
+
+        // Fetch the exam with questions
+        const exam = await Exam.findById(examId)
+            .populate({
+                path: 'questions',
+                populate: {
+                    path: 'options'
+                }
+            });
+
+        if (!exam) {
+            req.flash('error', 'Exam not found');
+            return res.redirect('/dashboard');
+        }
+
+        // Combine all answers for display
+        const allAnswers = [
+            ...(submission.answers || []).map(answer => ({
+                ...answer.toObject(),
+                type: 'MCQ'
+            })),
+            ...(submission.tfAnswers || []).map(answer => ({
+                ...answer.toObject(),
+                type: 'TrueFalse'
+            }))
+        ];
+
+        // Sort answers based on question order in exam
+        const questionOrder = exam.questions.reduce((acc, q, idx) => {
+            acc[q._id.toString()] = idx;
+            return acc;
+        }, {});
+
+        allAnswers.sort((a, b) => {
+            const aIdx = questionOrder[a.questionId._id.toString()] || 0;
+            const bIdx = questionOrder[b.questionId._id.toString()] || 0;
+            return aIdx - bIdx;
+        });
+
+        // Get the result associated with this submission
+        const result = await Result.findOne({ submissionId: submission._id });
+
+        res.render('exam/submission-details', {
+            title: `Review Submission - ${exam.title}`,
+            submission,
+            exam,
+            result,
+            allAnswers,
+            user: req.user
+        });
+
+    } catch (error) {
+        console.error('Error in getSubmissionDetails:', error);
+        req.flash('error', 'Error fetching submission details');
+        res.redirect('/dashboard');
     }
 }; 

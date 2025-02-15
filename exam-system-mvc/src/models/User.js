@@ -65,12 +65,12 @@ userSchema.virtual('name').get(function() {
 });
 
 // Pre-save middleware to ensure name is set
-userSchema.pre('save', function(next) {
-    if (!this.name) {
-        this.name = `${this.firstName} ${this.lastName}`;
-    }
-    next();
-});
+// userSchema.pre('save', function(next) {
+//     if (!this.name) {
+//         this.name = `${this.firstName} ${this.lastName}`;
+//     }
+//     next();
+// });
 
 // Handle duplicate email error
 userSchema.post('save', function(error, doc, next) {

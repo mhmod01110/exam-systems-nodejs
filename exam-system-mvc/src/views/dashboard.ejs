@@ -7,7 +7,7 @@
                     <h5 class="card-title">Total Exams</h5>
                     <h2 class="display-4"><%= stats.totalExams %></h2>
                     <p class="card-text">
-                        <% if (user.role === 'student') { %>
+    <% if (user.role === 'student') { %>
                             Exams Taken
                         <% } else if (user.role === 'teacher') { %>
                             Exams Created
@@ -17,7 +17,7 @@
                     </p>
                 </div>
             </div>
-        </div>
+                    </div>
         <div class="col-md-3">
             <div class="card bg-success text-white">
                 <div class="card-body text-center">
@@ -49,7 +49,7 @@
                     </p>
                 </div>
             </div>
-        </div>
+                    </div>
         <div class="col-md-3">
             <div class="card bg-warning text-white">
                 <div class="card-body text-center">
@@ -74,7 +74,7 @@
             <div class="card-header">
                 <h4>Recent Exam Attempts</h4>
             </div>
-            <div class="card-body">
+                <div class="card-body">
                 <% if (recentAttempts && recentAttempts.length > 0) { %>
                     <div class="table-responsive">
                         <table class="table table-hover">
@@ -105,7 +105,7 @@
                                                 <a href="/exams/<%= attempt.exam._id %>/attempt/<%= attempt._id %>" 
                                                    class="btn btn-sm btn-primary">Continue</a>
                                             <% } else if (attempt.status === 'SUBMITTED') { %>
-                                                <a href="/exams/<%= attempt.exam._id %>/results" 
+                                                <a href="/exams/<%= attempt.exam._id %>/results %>" 
                                                    class="btn btn-sm btn-info">View Results</a>
                                             <% } %>
                                         </td>
@@ -113,7 +113,7 @@
                                 <% }); %>
                             </tbody>
                         </table>
-                    </div>
+                </div>
                 <% } else { %>
                     <p class="text-muted">No recent exam attempts.</p>
                 <% } %>
@@ -125,7 +125,7 @@
             <div class="card-header">
                 <h4>Upcoming Exams</h4>
             </div>
-            <div class="card-body">
+                <div class="card-body">
                 <% if (upcomingExams && upcomingExams.length > 0) { %>
                     <div class="table-responsive">
                         <table class="table table-hover">
@@ -150,7 +150,7 @@
                                 <% }); %>
                             </tbody>
                         </table>
-                    </div>
+                </div>
                 <% } else { %>
                     <p class="text-muted">No upcoming exams.</p>
                 <% } %>
@@ -162,7 +162,7 @@
             <div class="card-header">
                 <h4>Active Exams</h4>
             </div>
-            <div class="card-body">
+                <div class="card-body">
                 <% if (activeExams && activeExams.length > 0) { %>
                     <div class="table-responsive">
                         <table class="table table-hover">
@@ -187,7 +187,7 @@
                                 <% }); %>
                             </tbody>
                         </table>
-                    </div>
+                </div>
                 <% } else { %>
                     <p class="text-muted">No active exams.</p>
                 <% } %>
@@ -199,7 +199,7 @@
             <div class="card-header">
                 <h4>Recent Submissions</h4>
             </div>
-            <div class="card-body">
+                <div class="card-body">
                 <% if (recentSubmissions && recentSubmissions.length > 0) { %>
                     <div class="table-responsive">
                         <table class="table table-hover">
@@ -225,7 +225,7 @@
                                 <% }); %>
                             </tbody>
                         </table>
-                    </div>
+                </div>
                 <% } else { %>
                     <p class="text-muted">No recent submissions.</p>
                 <% } %>
@@ -269,7 +269,7 @@
                 <% } else { %>
                     <p class="text-muted">No recent activity.</p>
                 <% } %>
-            </div>
-        </div>
+    </div>
+</div> 
     <% } %>
 </div>

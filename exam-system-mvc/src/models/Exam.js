@@ -129,6 +129,18 @@ examSchema.pre('save', function(next) {
     next();
 });
 
+// In your Exam model file (Exam.js)
+examSchema.virtual('submissions', {
+    ref: 'Submission',         // The model to use
+    localField: '_id',         // Find submissions where `localField`
+    foreignField: 'examId'     // is equal to `foreignField`
+  });
+  
+// Ensure virtuals are included when converting to JSON or Objects
+examSchema.set('toObject', { virtuals: true });
+examSchema.set('toJSON', { virtuals: true });
+  
+
 // Index for better query performance
 examSchema.index({ startDate: 1, endDate: 1 });
 examSchema.index({ status: 1 });

@@ -40,4 +40,7 @@ router.post('/:id/attempt/:attemptId/grade', isAuth, isTeacher, examController.g
 // View detailed exam result
 router.get('/:examId/results/:resultId', isAuth, examController.getExamResultDetails);
 
+// Submission review route (for teachers)
+router.get('/:examId/submissions/:submissionId', isAuth, isTeacher, examController.getSubmissionDetails);
+
 module.exports = router; 

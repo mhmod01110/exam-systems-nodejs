@@ -37,9 +37,9 @@ exports.getDashboard = async (req, res) => {
 
             // Get recent exam attempts
             const recentAttempts = await ExamAttempt.find({ student: user._id })
-                .populate('exam')
+            .populate('exam')
                 .sort({ createdAt: -1 })
-                .limit(5);
+            .limit(5);
 
             // Get upcoming exams
             const upcomingExams = await Exam.find({
@@ -191,7 +191,11 @@ exports.getMyExams = async (req, res) => {
                 { isPublic: true },
                 { allowedStudents: req.user._id }
             ]
-        }).populate('createdBy', 'name');
+        }).populate('createdBy', 'name')
+          .populate({ 
+                path: 'createdBy', 
+                select: 'firstName lastName' 
+        });
 
         res.render('exam/my-exams', {
             title: 'My Exams',

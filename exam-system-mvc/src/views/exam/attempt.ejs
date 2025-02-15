@@ -13,7 +13,10 @@
                             </div>
                             <form id="submitForm" action="/exams/<%= attempt.exam._id %>/attempt/<%= attempt._id %>/submit" method="POST">
                                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                                <button type="submit" class="btn btn-primary" onclick="return confirm('Are you sure you want to submit your exam?')">
+                                <button type="submit" class="btn btn-primary" 
+                                        onclick="return confirm('Are you sure you want to submit your exam?')"
+                                        <%= attempt.status === 'SUBMITTED' ? 'disabled' : '' %>
+                                        style="<%= attempt.status === 'SUBMITTED' ? 'background-color: #6c757d; border-color: #6c757d;' : '' %>">
                                     <i class="fas fa-paper-plane"></i> Submit Exam
                                 </button>
                             </form>
@@ -88,7 +91,9 @@
                 <% }); %>
 
                 <div class="d-grid gap-2 mb-4">
-                    <button type="submit" class="btn btn-primary btn-lg">
+                    <button type="submit" class="btn btn-primary btn-lg"
+                            <%= attempt.status === 'SUBMITTED' ? 'disabled' : '' %>
+                            style="<%= attempt.status === 'SUBMITTED' ? 'background-color: #6c757d; border-color: #6c757d;' : '' %>">
                         <i class="fas fa-paper-plane"></i> Submit Exam
                     </button>
                 </div>

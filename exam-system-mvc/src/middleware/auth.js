@@ -7,21 +7,21 @@ exports.isAuth = async (req, res, next) => {
         if (!req.session.user) {
             return res.redirect('/auth/login');
         }
-        
+    
         // Attach user to request
         const user = await User.findById(req.session.user._id);
-        if (!user) {
-            return res.redirect('/auth/login');
-        }
+    if (!user) {
+        return res.redirect('/auth/login');
+    }
         
         // Set user name if not already set
         if (!user.name) {
             user.name = `${user.firstName} ${user.lastName}`;
         }
         
-        req.user = user;
+    req.user = user;
         res.locals.user = user;
-        next();
+    next();
     } catch (error) {
         console.error('Auth middleware error:', error);
         res.redirect('/auth/login');
@@ -30,7 +30,7 @@ exports.isAuth = async (req, res, next) => {
 
 exports.isTeacher = (req, res, next) => {
     if (req.user && (req.user.role === 'teacher' || req.user.role === 'admin')) {
-        next();
+    next();
     } else {
         res.status(403).render('error', {
             message: 'Access denied. Teachers only.',
@@ -41,7 +41,7 @@ exports.isTeacher = (req, res, next) => {
 
 exports.isAdmin = (req, res, next) => {
     if (req.user && req.user.role === 'admin') {
-        next();
+    next();
     } else {
         res.status(403).render('error', {
             message: 'Access denied. Administrators only.',
@@ -52,7 +52,7 @@ exports.isAdmin = (req, res, next) => {
 
 exports.isStudent = (req, res, next) => {
     if (req.user && req.user.role === 'student') {
-        next();
+    next();
     } else {
         res.status(403).render('error', {
             message: 'Access denied. Students only.',

@@ -25,13 +25,13 @@ exports.getLogin = (req, res) => {
 exports.postLogin = async (req, res, next) => {
     try {
         const { email, password } = req.body;
-        
+
         // Find user and select all fields needed for session
         const user = await User.findOne({ email }).select('+password');
         if (!user) {
             throw new AppError('Invalid email or password', 401);
         }
-        
+
         // Check password
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
@@ -53,7 +53,7 @@ exports.postLogin = async (req, res, next) => {
             role: user.role,
             departmentId: user.departmentId
         };
-        
+
         // Set session
         req.session.user = sessionUser;
         req.session.isAuthenticated = true;

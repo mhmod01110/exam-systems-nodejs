@@ -54,7 +54,7 @@
                 <% if (user) { %>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-user-circle me-1"></i><%= user.name %>
+                            <i class="fas fa-user-circle me-1"></i><%= user.name.toUpperCase() %>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <!-- <li>
