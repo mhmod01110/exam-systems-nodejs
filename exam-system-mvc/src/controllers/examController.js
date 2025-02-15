@@ -667,3 +667,94 @@ exports.gradeExamAttempt = async (req, res) => {
         res.redirect(`/exams/${req.params.id}/attempts`);
     }
 }; 
+
+// Display detailed exam result
+exports.getExamResultDetails = async (req, res) => {
+    try {
+        const { examId, resultId } = req.params;
+
+        // Fetch the result with all necessary data
+        const result = await Result.findById(resultId)
+            .populate('examId')
+            .populate('studentId', 'username firstName lastName')
+            .populate({
+                path: 'submissionId',
+                populate: [{
+                    path: 'answers.questionId',
+                    model: 'Question',
+                    populate: {
+                        path: 'options'
+                    }
+                }, {
+                    path: 'tfAnswers.questionId',
+                    model: 'Question'
+                }]
+            });
+
+        if (!result) {
+            req.flash('error', 'Result not found');
+            return res.redirect('/exams');
+        }
+
+        // Security check - only allow the student who took the exam or admin/teacher to view
+        if (result.studentId._id.toString() !== req.user._id.toString() && 
+            req.user.role !== 'admin' && 
+            result.examId.createdBy.toString() !== req.user._id.toString()) {
+            req.flash('error', 'Not authorized to view these results');
+            return res.redirect('/exams');
+        }
+
+        // Fetch the exam with questions
+        const exam = await Exam.findById(examId)
+            .populate({
+                path: 'questions',
+                populate: {
+                    path: 'options'
+                }
+            });
+
+        if (!exam) {
+            req.flash('error', 'Exam not found');
+            return res.redirect('/exams');
+        }
+
+        // Combine all answers for display
+        const submission = result.submissionId;
+        const allAnswers = [
+            ...(submission.answers || []).map(answer => ({
+                ...answer.toObject(),
+                type: 'MCQ'
+            })),
+            ...(submission.tfAnswers || []).map(answer => ({
+                ...answer.toObject(),
+                type: 'TrueFalse'
+            }))
+        ];
+
+        // Sort answers based on question order in exam if needed
+        const questionOrder = exam.questions.reduce((acc, q, idx) => {
+            acc[q._id.toString()] = idx;
+            return acc;
+        }, {});
+
+        allAnswers.sort((a, b) => {
+            const aIdx = questionOrder[a.questionId._id.toString()] || 0;
+            const bIdx = questionOrder[b.questionId._id.toString()] || 0;
+            return aIdx - bIdx;
+        });
+
+        res.render('exam/result-details', {
+            title: `${exam.title} - Results`,
+            exam,
+            result,
+            submission,
+            allAnswers,
+            user: req.user
+        });
+
+    } catch (error) {
+        console.error('Error in getExamResultDetails:', error);
+        req.flash('error', 'Error fetching exam result details');
+        res.redirect('/exams');
+    }
+}; 

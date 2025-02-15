@@ -1,175 +1,275 @@
-<%- contentFor('body') %>
-
-<div class="container">
-    <h1 class="mb-4">Dashboard</h1>
-
-    <% if (user.role === 'student') { %>
-        <!-- Student Dashboard -->
-        <div class="row">
-            <!-- Upcoming Exams -->
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Upcoming Exams</h5>
-                    </div>
-                    <div class="card-body">
-                        <% if (upcomingExams && upcomingExams.length > 0) { %>
-                            <div class="list-group">
-                                <% upcomingExams.forEach(exam => { %>
-                                    <a href="/exams/<%= exam._id %>" class="list-group-item list-group-item-action">
-                                        <div class="d-flex w-100 justify-content-between">
-                                            <h6 class="mb-1"><%= exam.title %></h6>
-                                            <small class="text-muted">
-                                                <%= new Date(exam.startDate).toLocaleDateString() %>
-                                            </small>
-                                        </div>
-                                        <p class="mb-1 text-muted small">Duration: <%= exam.duration %> minutes</p>
-                                    </a>
-                                <% }); %>
-                            </div>
-                        <% } else { %>
-                            <p class="text-muted mb-0">No upcoming exams</p>
-                        <% } %>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Recent Results -->
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Recent Results</h5>
-                    </div>
-                    <div class="card-body">
-                        <% if (recentResults && recentResults.length > 0) { %>
-                            <div class="list-group">
-                                <% recentResults.forEach(result => { %>
-                                    <div class="list-group-item">
-                                        <div class="d-flex w-100 justify-content-between">
-                                            <h6 class="mb-1"><%= result.examId.title %></h6>
-                                            <span class="badge bg-<%= result.status === 'PASS' ? 'success' : 'danger' %>">
-                                                <%= result.status %>
-                                            </span>
-                                        </div>
-                                        <p class="mb-1">Score: <%= result.percentage.toFixed(1) %>%</p>
-                                        <small class="text-muted">
-                                            <%= new Date(result.createdAt).toLocaleDateString() %>
-                                        </small>
-                                    </div>
-                                <% }); %>
-                            </div>
-                        <% } else { %>
-                            <p class="text-muted mb-0">No results yet</p>
-                        <% } %>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    <% } else if (user.role === 'teacher' || user.role === 'admin') { %>
-        <!-- Teacher/Admin Dashboard -->
-        <div class="row">
-            <!-- Recent Exams -->
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">Recent Exams</h5>
-                        <a href="/exams/create" class="btn btn-primary btn-sm">
-                            <i class="fas fa-plus"></i> Create Exam
-                        </a>
-                    </div>
-                    <div class="card-body">
-                        <% if (exams && exams.length > 0) { %>
-                            <div class="list-group">
-                                <% exams.forEach(exam => { %>
-                                    <a href="/exams/<%= exam._id %>" class="list-group-item list-group-item-action">
-                                        <div class="d-flex w-100 justify-content-between">
-                                            <h6 class="mb-1"><%= exam.title %></h6>
-                                            <span class="badge bg-<%= 
-                                                exam.status === 'PUBLISHED' ? 'success' :
-                                                exam.status === 'DRAFT' ? 'secondary' :
-                                                'primary' %>">
-                                                <%= exam.status %>
-                                            </span>
-                                        </div>
-                                        <p class="mb-1 text-muted small">
-                                            Questions: <%= exam.questions.length %> |
-                                            Total Marks: <%= exam.totalMarks %>
-                                        </p>
-                                    </a>
-                                <% }); %>
-                            </div>
-                        <% } else { %>
-                            <p class="text-muted mb-0">No exams created yet</p>
-                        <% } %>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pending Evaluations -->
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Pending Evaluations</h5>
-                    </div>
-                    <div class="card-body">
-                        <% if (pendingEvaluations && pendingEvaluations.length > 0) { %>
-                            <div class="list-group">
-                                <% pendingEvaluations.forEach(submission => { %>
-                                    <a href="/exams/<%= submission.examId._id %>/submissions/<%= submission._id %>" 
-                                       class="list-group-item list-group-item-action">
-                                        <div class="d-flex w-100 justify-content-between">
-                                            <h6 class="mb-1"><%= submission.examId.title %></h6>
-                                            <small class="text-muted">
-                                                <%= new Date(submission.submittedAt).toLocaleDateString() %>
-                                            </small>
-                                        </div>
-                                        <p class="mb-1">Student: <%= submission.studentId.name %></p>
-                                    </a>
-                                <% }); %>
-                            </div>
-                        <% } else { %>
-                            <p class="text-muted mb-0">No pending evaluations</p>
-                        <% } %>
-                    </div>
-                </div>
-            </div>
-        </div>
-    <% } %>
-
-    <!-- Quick Stats -->
-    <div class="row">
-        <div class="col-md-3 mb-4">
+<div class="container mt-4">
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
             <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <h6 class="card-title">Total Exams</h6>
-                    <h2 class="mb-0"><%= typeof totalExams !== 'undefined' ? totalExams : '0' %></h2>
+                <div class="card-body text-center">
+                    <h5 class="card-title">Total Exams</h5>
+                    <h2 class="display-4"><%= stats.totalExams %></h2>
+                    <p class="card-text">
+                        <% if (user.role === 'student') { %>
+                            Exams Taken
+                        <% } else if (user.role === 'teacher') { %>
+                            Exams Created
+                        <% } else { %>
+                            Total Exams
+                        <% } %>
+                    </p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-4">
+        <div class="col-md-3">
             <div class="card bg-success text-white">
-                <div class="card-body">
-                    <h6 class="card-title">Completed Exams</h6>
-                    <h2 class="mb-0"><%= typeof completedExams !== 'undefined' ? completedExams : '0' %></h2>
+                <div class="card-body text-center">
+                    <h5 class="card-title">Average Score</h5>
+                    <h2 class="display-4"><%= stats.averageScore %>%</h2>
+                    <p class="card-text">
+                        <% if (user.role === 'student') { %>
+                            Your Average
+                        <% } else if (user.role === 'teacher') { %>
+                            Students Average
+                        <% } else { %>
+                            Overall Average
+                        <% } %>
+                    </p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-4">
+        <div class="col-md-3">
             <div class="card bg-info text-white">
-                <div class="card-body">
-                    <h6 class="card-title">Average Score</h6>
-                    <h2 class="mb-0"><%= typeof averageScore !== 'undefined' ? averageScore.toFixed(1) + '%' : '0%' %></h2>
+                <div class="card-body text-center">
+                    <h5 class="card-title">Passed Exams</h5>
+                    <h2 class="display-4"><%= stats.examsPassed %></h2>
+                    <p class="card-text">
+                        <% if (stats.totalExams > 0) { %>
+                            (<%= ((stats.examsPassed / stats.totalExams) * 100).toFixed(1) %>%)
+                        <% } else { %>
+                            (0%)
+                        <% } %>
+                    </p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-4">
+        <div class="col-md-3">
             <div class="card bg-warning text-white">
-                <div class="card-body">
-                    <h6 class="card-title">Pending</h6>
-                    <h2 class="mb-0"><%= typeof pendingExams !== 'undefined' ? pendingExams : '0' %></h2>
+                <div class="card-body text-center">
+                    <h5 class="card-title">Failed Exams</h5>
+                    <h2 class="display-4"><%= stats.examsFailed %></h2>
+                    <p class="card-text">
+                        <% if (stats.totalExams > 0) { %>
+                            (<%= ((stats.examsFailed / stats.totalExams) * 100).toFixed(1) %>%)
+                        <% } else { %>
+                            (0%)
+                        <% } %>
+                    </p>
                 </div>
             </div>
         </div>
     </div>
-</div> 
+
+    <!-- Role-specific content -->
+    <% if (user.role === 'student') { %>
+        <!-- Recent Attempts -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>Recent Exam Attempts</h4>
+            </div>
+            <div class="card-body">
+                <% if (recentAttempts && recentAttempts.length > 0) { %>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Exam</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% recentAttempts.forEach(attempt => { %>
+                                    <tr>
+                                        <td><%= attempt.exam.title %></td>
+                                        <td><%= attempt.startTime.toLocaleDateString() %></td>
+                                        <td>
+                                            <span class="badge <%= 
+                                                attempt.status === 'SUBMITTED' ? 'bg-success' : 
+                                                attempt.status === 'IN_PROGRESS' ? 'bg-warning text-dark' : 
+                                                'bg-danger' 
+                                            %>">
+                                              <%= attempt.status %>
+                                            </span>
+                                          </td>
+                                        <td>
+                                            <% if (attempt.status === 'IN_PROGRESS') { %>
+                                                <a href="/exams/<%= attempt.exam._id %>/attempt/<%= attempt._id %>" 
+                                                   class="btn btn-sm btn-primary">Continue</a>
+                                            <% } else if (attempt.status === 'SUBMITTED') { %>
+                                                <a href="/exams/<%= attempt.exam._id %>/results" 
+                                                   class="btn btn-sm btn-info">View Results</a>
+                                            <% } %>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                <% } else { %>
+                    <p class="text-muted">No recent exam attempts.</p>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Upcoming Exams -->
+        <div class="card">
+            <div class="card-header">
+                <h4>Upcoming Exams</h4>
+            </div>
+            <div class="card-body">
+                <% if (upcomingExams && upcomingExams.length > 0) { %>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Start Date</th>
+                                    <th>Duration</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% upcomingExams.forEach(exam => { %>
+                                    <tr>
+                                        <td><%= exam.title %></td>
+                                        <td><%= exam.startDate.toLocaleString() %></td>
+                                        <td><%= exam.duration %> minutes</td>
+                                        <td>
+                                            <a href="/exams/<%= exam._id %>" class="btn btn-sm btn-primary">View Details</a>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                <% } else { %>
+                    <p class="text-muted">No upcoming exams.</p>
+                <% } %>
+            </div>
+        </div>
+    <% } else if (user.role === 'teacher') { %>
+        <!-- Active Exams -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>Active Exams</h4>
+            </div>
+            <div class="card-body">
+                <% if (activeExams && activeExams.length > 0) { %>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>End Date</th>
+                                    <th>Submissions</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% activeExams.forEach(exam => { %>
+                                    <tr>
+                                        <td><%= exam.title %></td>
+                                        <td><%= exam.endDate.toLocaleString() %></td>
+                                        <td><%= exam.submissionCount || 0 %></td>
+                                        <td>
+                                            <a href="/exams/<%= exam._id %>" class="btn btn-sm btn-primary">View Details</a>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                <% } else { %>
+                    <p class="text-muted">No active exams.</p>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Recent Submissions -->
+        <div class="card">
+            <div class="card-header">
+                <h4>Recent Submissions</h4>
+            </div>
+            <div class="card-body">
+                <% if (recentSubmissions && recentSubmissions.length > 0) { %>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Exam</th>
+                                    <th>Submitted At</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% recentSubmissions.forEach(submission => { %>
+                                    <tr>
+                                        <td><%= submission.studentId.firstName %> <%= submission.studentId.lastName %></td>
+                                        <td><%= submission.examId.title %></td>
+                                        <td><%= submission.submittedAt.toLocaleString() %></td>
+                                        <td>
+                                            <a href="/exams/<%= submission.examId._id %>/submissions/<%= submission._id %>" 
+                                               class="btn btn-sm btn-info">Review</a>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                <% } else { %>
+                    <p class="text-muted">No recent submissions.</p>
+                <% } %>
+            </div>
+        </div>
+    <% } else if (user.role === 'admin') { %>
+        <!-- Recent Activity -->
+        <div class="card">
+            <div class="card-header">
+                <h4>Recent System Activity</h4>
+            </div>
+            <div class="card-body">
+                <% if (recentActivity && recentActivity.length > 0) { %>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Exam</th>
+                                    <th>Action</th>
+                                    <th>Time</th>
+                                    <th>View</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% recentActivity.forEach(activity => { %>
+                                    <tr>
+                                        <td><%= activity.studentId.firstName %> <%= activity.studentId.lastName %></td>
+                                        <td><%= activity.examId.title %></td>
+                                        <td><%= activity.status %></td>
+                                        <td><%= activity.submittedAt.toLocaleString() %></td>
+                                        <td>
+                                            <a href="/exams/<%= activity.examId._id %>/submissions/<%= activity._id %>" 
+                                               class="btn btn-sm btn-info">View</a>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                <% } else { %>
+                    <p class="text-muted">No recent activity.</p>
+                <% } %>
+            </div>
+        </div>
+    <% } %>
+</div>

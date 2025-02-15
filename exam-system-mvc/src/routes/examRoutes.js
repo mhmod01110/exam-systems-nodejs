@@ -36,4 +36,8 @@ router.get('/:id/attempt/:attemptId', isAuth, examController.getExamAttempt);
 router.post('/:id/attempt/:attemptId/submit', isAuth, examController.submitExamAttempt);
 router.post('/:id/attempt/:attemptId/grade', isAuth, isTeacher, examController.gradeExamAttempt);
 
+
+// View detailed exam result
+router.get('/:examId/results/:resultId', isAuth, examController.getExamResultDetails);
+
 module.exports = router; 
