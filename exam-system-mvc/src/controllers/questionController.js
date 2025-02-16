@@ -163,235 +163,262 @@ exports.getEditQuestion = async (req, res) => {
 
 exports.postEditQuestion = async (req, res, next) => {
     try {
-        let question = await Question.findById(req.params.id);
-        
-        if (!question) {
-            throw new AppError('Question not found', 404);
+      // 1. Find the question
+      let question = await Question.findById(req.params.id);
+      if (!question) {
+        throw new AppError('Question not found', 404);
+      }
+  
+      // 2. Authorization check
+      if (
+        question.createdBy.toString() !== req.user._id.toString() &&
+        req.user.role !== 'admin'
+      ) {
+        throw new AppError('Not authorized to edit this question', 403);
+      }
+  
+      // 3. Base update data
+      const updateData = {
+        text: req.body.text,
+        marks: req.body.marks,
+        difficulty: req.body.difficulty || 'Medium',
+        explanation: req.body.explanation || '',
+        tags: req.body.tags
+          ? req.body.tags.split(',').map((tag) => tag.trim()).filter((tag) => tag)
+          : []
+      };
+  
+      // 4. For MCQ questions, handle options and detect if the correct answer changed
+      let oldCorrectAnswer;
+      let correctAnswerChanged = false;
+      let correctOptionIndex;
+  
+      if (question.type === 'MCQ') {
+        // Normalize options input into an array
+        let optionsArray = Array.isArray(req.body['options[]'])
+          ? req.body['options[]']
+          : [req.body['options[]']];
+  
+        // Validate minimum number of options
+        if (!optionsArray || optionsArray.length < 2) {
+          throw new AppError('MCQ questions must have at least 2 options', 400);
         }
-        
-        // Authorization check
-        if (question.createdBy.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-            throw new AppError('Not authorized to edit this question', 403);
+  
+        // Get the new correct option index
+        correctOptionIndex = parseInt(req.body.correctOption);
+        if (
+          isNaN(correctOptionIndex) ||
+          correctOptionIndex < 0 ||
+          correctOptionIndex >= optionsArray.length
+        ) {
+          throw new AppError('Invalid correct option selected', 400);
         }
-
-        // Base update data
-        const updateData = {
-            text: req.body.text,
-            marks: req.body.marks,
-            difficulty: req.body.difficulty || 'Medium',
-            explanation: req.body.explanation || '',
-            tags: req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : []
-        };
-
-        // Store old correct answer for comparison
-        let oldCorrectAnswer;
-        let correctAnswerChanged = false;
-        let correctOptionIndex;
-
-        // Handle MCQ specific data
-        if (question.type === 'MCQ') {
-            let optionsArray = Array.isArray(req.body['options[]']) ? 
-                             req.body['options[]'] : 
-                             [req.body['options[]']];
-
-            // Validate options
-            if (!optionsArray || optionsArray.length < 2) {
-                throw new AppError('MCQ questions must have at least 2 options', 400);
-            }
-
-            correctOptionIndex = parseInt(req.body.correctOption);
-            
-            // Validate correct option
-            if (isNaN(correctOptionIndex) || correctOptionIndex < 0 || correctOptionIndex >= optionsArray.length) {
-                throw new AppError('Invalid correct option selected', 400);
-            }
-
-            // Store old correct answer
-            oldCorrectAnswer = question.options.findIndex(opt => opt.isCorrect);
-
-            // Format options with correct answer
-            updateData.options = optionsArray.map((text, index) => ({
-                text: text.trim(),
-                isCorrect: index === correctOptionIndex
-            }));
-
-            // Check if correct answer changed
-            correctAnswerChanged = oldCorrectAnswer !== correctOptionIndex;
-        }
-
-        // Handle image uploads using express-fileupload
-        if (req.files && req.files.images) {
-            const uploadedImages = Array.isArray(req.files.images) ? 
-                                 req.files.images : 
-                                 [req.files.images];
-
-            const newImages = await Promise.all(uploadedImages.map(async (file, index) => {
-                try {
-                    // Upload to cloudinary
-                    const result = await cloudinary.uploader.upload(file.tempFilePath, {
-                        folder: 'exam-questions'
-                    });
-                    
-                    return {
-                        url: result.secure_url,
-                        caption: req.body.captions ? 
-                                (Array.isArray(req.body.captions) ? 
-                                 req.body.captions[index] : 
-                                 req.body.captions).trim() : 
-                                ''
-                    };
-                } catch (error) {
-                    console.error('Error uploading image:', error);
-                    throw new AppError('Error uploading image', 500);
-                }
-            }));
-
-            // Combine with existing images
-            updateData.images = [...(question.images || []), ...newImages];
-        }
-
-        // Handle image deletions
-        if (req.body.deleteImages) {
-            const deleteIndices = Array.isArray(req.body.deleteImages) ? 
-                                req.body.deleteImages.map(Number) : 
-                                [Number(req.body.deleteImages)];
-            
-            // Keep only non-deleted images
-            updateData.images = (updateData.images || question.images).filter((_, index) => 
-                !deleteIndices.includes(index)
-            );
-        }
-
-        // Update image captions for existing images
-        if (req.body.existingImageCaptions && updateData.images) {
-            const captions = Array.isArray(req.body.existingImageCaptions) ?
-                           req.body.existingImageCaptions :
-                           [req.body.existingImageCaptions];
-            
-            updateData.images = updateData.images.map((image, index) => ({
-                ...image,
-                caption: captions[index] ? captions[index].trim() : image.caption
-            }));
-        }
-
-        // Update the question
-        const updatedQuestion = await Question.findByIdAndUpdate(
-            req.params.id,
-            updateData,
-            {
-                new: true,
-                runValidators: true
-            }
+  
+        // Store the old correct answer index
+        oldCorrectAnswer = question.options.findIndex((opt) => opt.isCorrect);
+  
+        // Build the new options array with the correct answer marked
+        updateData.options = optionsArray.map((text, index) => ({
+          text: text.trim(),
+          isCorrect: index === correctOptionIndex
+        }));
+  
+        // Determine if the correct answer changed
+        correctAnswerChanged = oldCorrectAnswer !== correctOptionIndex;
+  
+        // Log for debugging
+        console.log(
+          'Old correct answer index:',
+          oldCorrectAnswer,
+          'New correct answer index:',
+          correctOptionIndex
         );
-
-        if (!updatedQuestion) {
-            throw new AppError('Failed to update question', 500);
-        }
-
-        // If correct answer changed, update related models
-        if (correctAnswerChanged) {
-            // 1. Update ExamAttempts
-            const examAttempts = await ExamAttempt.find({
-                'questions.question': question._id,
-                status: 'SUBMITTED'
-            });
-
-            // 2. Update Submissions
-            const submissions = await Submission.find({
-                examId: question.examId,
-                status: 'SUBMITTED',
-                $or: [
-                    { 'answers.questionId': question._id },
-                    { 'tfAnswers.questionId': question._id }
-                ]
-            });
-
-            // 3. Update Results
-            const results = await Result.find({
-                examId: question.examId,
-                'questionResults.questionId': question._id
-            });
-
-            // Process each model's updates
-            await Promise.all([
-                // Update ExamAttempts
-                ...examAttempts.map(async attempt => {
-                    const questionAttempt = attempt.questions.find(q => 
-                        q.question.toString() === question._id.toString()
-                    );
-                    if (questionAttempt) {
-                        // Recalculate marks based on new correct answer
-                        if (question.type === 'MCQ') {
-                            const selectedOptionIndex = parseInt(questionAttempt.answer);
-                            questionAttempt.marks = selectedOptionIndex === correctOptionIndex ? 
-                                                  updatedQuestion.marks : 0;
-                        }
-                        // Recalculate total marks
-                        attempt.totalMarks = attempt.questions.reduce((sum, q) => sum + q.marks, 0);
-                        await attempt.save();
-                    }
-                }),
-
-                // Update Submissions
-                ...submissions.map(async submission => {
-                    if (question.type === 'MCQ') {
-                        const answer = submission.answers.find(a => 
-                            a.questionId.toString() === question._id.toString()
-                        );
-                        if (answer) {
-                            const selectedOptionIndex = parseInt(answer.selectedOption);
-                            answer.isCorrect = selectedOptionIndex === correctOptionIndex;
-                            answer.marksObtained = answer.isCorrect ? updatedQuestion.marks : 0;
-                            submission.totalMarksObtained = submission.answers.reduce(
-                                (sum, a) => sum + a.marksObtained, 0
-                            );
-                            await submission.save();
-                        }
-                    }
-                }),
-
-                // Update Results
-                ...results.map(async result => {
-                    const questionResult = result.questionResults.find(qr => 
-                        qr.questionId.toString() === question._id.toString()
-                    );
-                    if (questionResult) {
-                        if (question.type === 'MCQ') {
-                            const submission = await Submission.findById(result.submissionId);
-                            if (submission) {
-                                const answer = submission.answers.find(a => 
-                                    a.questionId.toString() === question._id.toString()
-                                );
-                                if (answer) {
-                                    questionResult.isCorrect = answer.isCorrect;
-                                    questionResult.obtainedMarks = answer.marksObtained;
-                                    // Recalculate total marks and percentage
-                                    result.obtainedMarks = result.questionResults.reduce(
-                                        (sum, qr) => sum + qr.obtainedMarks, 0
-                                    );
-                                    result.percentage = (result.obtainedMarks / result.totalMarks) * 100;
-                                    result.status = result.percentage >= 50 ? 'PASS' : 'FAIL';
-                                    await result.save();
-                                }
-                            }
-                        }
-                    }
-                })
-            ]);
-
-            req.flash('success', 'Question updated successfully. All related submissions and results have been recalculated.');
-        } else {
-            req.flash('success', 'Question updated successfully');
-        }
-
-        res.redirect(`/exams/${req.params.examId}/questions/${updatedQuestion._id}`);
+      }
+  
+      // 5. Handle image uploads (using express-fileupload and Cloudinary)
+      if (req.files && req.files.images) {
+        const uploadedImages = Array.isArray(req.files.images)
+          ? req.files.images
+          : [req.files.images];
+  
+        const newImages = await Promise.all(
+          uploadedImages.map(async (file, index) => {
+            try {
+              const result = await cloudinary.uploader.upload(file.tempFilePath, {
+                folder: 'exam-questions'
+              });
+              return {
+                url: result.secure_url,
+                caption: req.body.captions
+                  ? (Array.isArray(req.body.captions)
+                      ? req.body.captions[index]
+                      : req.body.captions
+                    ).trim()
+                  : ''
+              };
+            } catch (error) {
+              console.error('Error uploading image:', error);
+              throw new AppError('Error uploading image', 500);
+            }
+          })
+        );
+  
+        // Combine new images with any existing images
+        updateData.images = [...(question.images || []), ...newImages];
+      }
+  
+      // 6. Handle image deletions (if provided)
+      if (req.body.deleteImages) {
+        const deleteIndices = Array.isArray(req.body.deleteImages)
+          ? req.body.deleteImages.map(Number)
+          : [Number(req.body.deleteImages)];
+  
+        updateData.images = (updateData.images || question.images).filter(
+          (_, index) => !deleteIndices.includes(index)
+        );
+      }
+  
+      // 7. Update captions for existing images
+      if (req.body.existingImageCaptions && updateData.images) {
+        const captions = Array.isArray(req.body.existingImageCaptions)
+          ? req.body.existingImageCaptions
+          : [req.body.existingImageCaptions];
+        updateData.images = updateData.images.map((image, index) => ({
+          ...image,
+          caption: captions[index] ? captions[index].trim() : image.caption
+        }));
+      }
+  
+      // 8. Update the question document
+      const updatedQuestion = await Question.findByIdAndUpdate(
+        req.params.id,
+        updateData,
+        { new: true, runValidators: true }
+      );
+      if (!updatedQuestion) {
+        throw new AppError('Failed to update question', 500);
+      }
+  
+      // 9. If the correct answer changed, propagate the changes to ExamAttempts, Submissions, and Results
+      if (correctAnswerChanged) {
+        console.log('Correct answer changed. Propagating updates...');
+  
+        // Use the updated examId to ensure consistency
+        const examId = updatedQuestion.examId;
+  
+        // Fetch related exam attempts (only those that are SUBMITTED)
+        const examAttempts = await ExamAttempt.find({
+          'questions.question': question._id,
+          status: 'SUBMITTED'
+        });
+        console.log('ExamAttempts found:', examAttempts.length);
+  
+        // Fetch related submissions (using updatedQuestion.examId)
+        const submissions = await Submission.find({
+          examId: examId,
+          status: 'SUBMITTED',
+          $or: [
+            { 'answers.questionId': question._id },
+            { 'tfAnswers.questionId': question._id }
+          ]
+        });
+        console.log('Submissions found:', submissions.length);
+  
+        // Fetch related results (using updatedQuestion.examId)
+        const results = await Result.find({
+          examId: examId,
+          'questionResults.questionId': question._id
+        });
+        console.log('Results found:', results.length);
+  
+        await Promise.all([
+          // 9a. Update ExamAttempts
+          ...examAttempts.map(async (attempt) => {
+            const questionAttempt = attempt.questions.find(
+              (q) => q.question.toString() === question._id.toString()
+            );
+            if (questionAttempt) {
+              // For MCQ, recalc marks based on the new correct answer
+              if (question.type === 'MCQ') {
+                const selectedOptionIndex = parseInt(questionAttempt.answer);
+                questionAttempt.marks =
+                  selectedOptionIndex === correctOptionIndex
+                    ? updatedQuestion.marks
+                    : 0;
+              }
+              // Recalculate total marks for the attempt
+              attempt.totalMarks = attempt.questions.reduce(
+                (sum, q) => sum + q.marks,
+                0
+              );
+              await attempt.save();
+            }
+          }),
+  
+          // 9b. Update Submissions
+          ...submissions.map(async (submission) => {
+            if (question.type === 'MCQ') {
+              const answer = submission.answers.find(
+                (a) => a.questionId.toString() === question._id.toString()
+              );
+              if (answer) {
+                const selectedOptionIndex = parseInt(answer.selectedOption);
+                answer.isCorrect = selectedOptionIndex === correctOptionIndex;
+                answer.marksObtained = answer.isCorrect ? updatedQuestion.marks : 0;
+                submission.totalMarksObtained = submission.answers.reduce(
+                  (sum, a) => sum + a.marksObtained,
+                  0
+                );
+                await submission.save();
+              }
+            }
+          }),
+  
+          // 9c. Update Results
+          ...results.map(async (result) => {
+            const questionResult = result.questionResults.find(
+              (qr) => qr.questionId.toString() === question._id.toString()
+            );
+            if (questionResult && question.type === 'MCQ') {
+              const submission = await Submission.findById(result.submissionId);
+              if (submission) {
+                const answer = submission.answers.find(
+                  (a) => a.questionId.toString() === question._id.toString()
+                );
+                if (answer) {
+                  questionResult.isCorrect = answer.isCorrect;
+                  questionResult.obtainedMarks = answer.marksObtained;
+                  // Recalculate total obtained marks and percentage
+                  result.obtainedMarks = result.questionResults.reduce(
+                    (sum, qr) => sum + qr.obtainedMarks,
+                    0
+                  );
+                  result.percentage = (result.obtainedMarks / result.totalMarks) * 100;
+                  result.status = result.percentage >= 50 ? 'PASS' : 'FAIL';
+                  await result.save();
+                }
+              }
+            }
+          })
+        ]);
+  
+        req.flash(
+          'success',
+          'Question updated successfully. All related submissions and results have been recalculated.'
+        );
+      } else {
+        req.flash('success', 'Question updated successfully');
+      }
+  
+      // 10. Redirect to the updated question view
+      res.redirect(`/exams/${req.params.examId}/questions/${updatedQuestion._id}`);
     } catch (error) {
-        console.error('Error in postEditQuestion:', error);
-        req.flash('error', error.message || 'Error updating question');
-        res.redirect(`/exams/${req.params.examId}/questions/${req.params.id}/edit`);
+      console.error('Error in postEditQuestion:', error);
+      req.flash('error', error.message || 'Error updating question');
+      res.redirect(`/exams/${req.params.examId}/questions/${req.params.id}/edit`);
     }
-};
-
+  };
+  
 // Handle question deletion
 exports.deleteQuestion = async (req, res) => {
     try {
