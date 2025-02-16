@@ -8,6 +8,8 @@
                   enctype="multipart/form-data"
                   class="needs-validation"
                   novalidate>
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
                 
                 <!-- Question Type (readonly) -->
                 <div class="mb-4">
@@ -65,7 +67,7 @@
                                                    required>
                                         </div>
                                         <input type="text" 
-                                               name="options[<%= index %>][text]" 
+                                               name="options[]" 
                                                class="form-control" 
                                                value="<%= option.text %>"
                                                required>
@@ -83,10 +85,88 @@
                                 id="addOption">
                             <i class="fas fa-plus"></i> Add Option
                         </button>
-                        <div class="invalid-feedback">
-                            MCQ questions must have at least 2 options and one correct answer.
+                        <div class="form-text text-danger">
+                            * At least 2 options are required. Select the correct answer using the radio button.
                         </div>
                     </div>
+
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const form = document.querySelector('form');
+                            const optionsContainer = document.getElementById('optionsContainer');
+                            const addOptionBtn = document.getElementById('addOption');
+
+                            // Add new option
+                            addOptionBtn.addEventListener('click', function() {
+                                const optionCount = optionsContainer.children.length;
+                                const newOption = document.createElement('div');
+                                newOption.className = 'option-row mb-2';
+                                newOption.innerHTML = `
+                                    <div class="input-group">
+                                        <div class="input-group-text">
+                                            <input type="radio" 
+                                                   name="correctOption" 
+                                                   value="${optionCount}"
+                                                   required>
+                                        </div>
+                                        <input type="text" 
+                                               name="options[]" 
+                                               class="form-control"
+                                               placeholder="Option ${optionCount + 1}"
+                                               required>
+                                        <button type="button" 
+                                                class="btn btn-danger remove-option">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                `;
+                                optionsContainer.appendChild(newOption);
+                                updateRemoveButtons();
+                            });
+
+                            // Remove option
+                            optionsContainer.addEventListener('click', function(e) {
+                                if (e.target.closest('.remove-option')) {
+                                    const optionRow = e.target.closest('.option-row');
+                                    if (optionsContainer.children.length > 2) {
+                                        optionRow.remove();
+                                        // Update radio values
+                                        optionsContainer.querySelectorAll('[name="correctOption"]').forEach((radio, index) => {
+                                            radio.value = index;
+                                        });
+                                        updateRemoveButtons();
+                                    }
+                                }
+                            });
+
+                            // Update remove buttons state
+                            function updateRemoveButtons() {
+                                const removeButtons = optionsContainer.querySelectorAll('.remove-option');
+                                const disabled = optionsContainer.children.length <= 2;
+                                removeButtons.forEach(btn => btn.disabled = disabled);
+                            }
+
+                            // Form validation
+                            form.addEventListener('submit', function(e) {
+                                if (question.type === 'MCQ') {
+                                    const options = optionsContainer.querySelectorAll('input[name="options[]"]');
+                                    const correctOption = optionsContainer.querySelector('input[name="correctOption"]:checked');
+                                    
+                                    if (options.length < 2) {
+                                        e.preventDefault();
+                                        alert('MCQ questions must have at least 2 options');
+                                        return;
+                                    }
+                                    
+                                    if (!correctOption) {
+                                        e.preventDefault();
+                                        alert('Please select the correct answer');
+                                        return;
+                                    }
+                                }
+                            });
+                        });
+                    </script>
                 <% } %>
 
                 <!-- True/False Answer -->
@@ -267,9 +347,9 @@
                                    required>
                         </div>
                         <input type="text" 
-                               name="options[${optionCount}][text]" 
+                               name="options[]" 
                                class="form-control" 
-                               placeholder="Option text"
+                               placeholder="Option ${optionCount + 1}"
                                required>
                         <button type="button" 
                                 class="btn btn-danger remove-option">
@@ -285,11 +365,16 @@
             
             // Remove MCQ option
             optionsContainer.addEventListener('click', function(e) {
-                if (e.target.classList.contains('remove-option') || 
-                    e.target.closest('.remove-option')) {
-                    e.target.closest('.option-row').remove();
-                    updateRemoveButtons();
-                    renumberOptions();
+                if (e.target.closest('.remove-option')) {
+                    const optionRow = e.target.closest('.option-row');
+                    if (optionsContainer.children.length > 2) {
+                        optionRow.remove();
+                        // Update radio values
+                        optionsContainer.querySelectorAll('[name="correctOption"]').forEach((radio, index) => {
+                            radio.value = index;
+                        });
+                        updateRemoveButtons();
+                    }
                 }
             });
         }
@@ -332,9 +417,8 @@
         // Update remove buttons state
         function updateRemoveButtons() {
             const removeButtons = optionsContainer.querySelectorAll('.remove-option');
-            removeButtons.forEach(button => {
-                button.disabled = optionsContainer.children.length <= 2;
-            });
+            const disabled = optionsContainer.children.length <= 2;
+            removeButtons.forEach(btn => btn.disabled = disabled);
         }
         
         // Update remove image buttons state
@@ -342,15 +426,6 @@
             const removeButtons = imageContainer.querySelectorAll('.remove-image');
             removeButtons.forEach(button => {
                 button.disabled = imageContainer.children.length <= 1;
-            });
-        }
-        
-        // Renumber MCQ options
-        function renumberOptions() {
-            const options = optionsContainer.querySelectorAll('.option-row');
-            options.forEach((option, index) => {
-                option.querySelector('input[type="radio"]').value = index;
-                option.querySelector('input[type="text"]').name = `options[${index}][text]`;
             });
         }
         

@@ -158,47 +158,127 @@ exports.getEditQuestion = async (req, res) => {
     }
 };
 
-// Handle question update
-exports.postEditQuestion = async (req, res) => {
+exports.postEditQuestion = async (req, res, next) => {
     try {
         let question = await Question.findById(req.params.id);
         
         if (!question) {
-            req.flash('error', 'Question not found');
-            return res.redirect(`/exams/${req.params.examId}/questions`);
+            throw new AppError('Question not found', 404);
         }
         
-        // Check if user is authorized to edit
+        // Authorization check
         if (question.createdBy.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-            req.flash('error', 'Not authorized to edit this question');
-            return res.redirect(`/exams/${req.params.examId}/questions`);
+            throw new AppError('Not authorized to edit this question', 403);
         }
-        
-        // Validate MCQ options if updating them
-        if (req.body.options && question.type === 'MCQ') {
-            if (req.body.options.length < 2) {
-                req.flash('error', 'MCQ questions must have at least 2 options');
-                return res.redirect(`/exams/${req.params.examId}/questions/${question._id}/edit`);
+
+        // Base update data
+        const updateData = {
+            text: req.body.text,
+            marks: req.body.marks,
+            difficulty: req.body.difficulty || 'Medium',
+            explanation: req.body.explanation || '',
+            tags: req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : []
+        };
+
+        // Handle MCQ specific data
+        if (question.type === 'MCQ') {
+            let optionsArray = Array.isArray(req.body['options[]']) ? 
+                             req.body['options[]'] : 
+                             [req.body['options[]']];
+
+            // Validate options
+            if (!optionsArray || optionsArray.length < 2) {
+                throw new AppError('MCQ questions must have at least 2 options', 400);
             }
+
+            const correctOptionIndex = parseInt(req.body.correctOption);
             
-            const correctOptions = req.body.options.filter(opt => opt.isCorrect);
-            if (correctOptions.length !== 1) {
-                req.flash('error', 'MCQ questions must have exactly one correct answer');
-                return res.redirect(`/exams/${req.params.examId}/questions/${question._id}/edit`);
+            // Validate correct option
+            if (isNaN(correctOptionIndex) || correctOptionIndex < 0 || correctOptionIndex >= optionsArray.length) {
+                throw new AppError('Invalid correct option selected', 400);
             }
+
+            // Format options with correct answer
+            updateData.options = optionsArray.map((text, index) => ({
+                text: text.trim(),
+                isCorrect: index === correctOptionIndex
+            }));
         }
-        
-        question = await Question.findByIdAndUpdate(req.params.id, req.body, {
-            new: true,
-            runValidators: true
-        });
-        
+
+        // Handle image uploads using express-fileupload
+        if (req.files && req.files.images) {
+            const uploadedImages = Array.isArray(req.files.images) ? 
+                                 req.files.images : 
+                                 [req.files.images];
+
+            const newImages = await Promise.all(uploadedImages.map(async (file, index) => {
+                try {
+                    // Upload to cloudinary
+                    const result = await cloudinary.uploader.upload(file.tempFilePath, {
+                        folder: 'exam-questions'
+                    });
+                    
+                    return {
+                        url: result.secure_url,
+                        caption: req.body.captions ? 
+                                (Array.isArray(req.body.captions) ? 
+                                 req.body.captions[index] : 
+                                 req.body.captions).trim() : 
+                                ''
+                    };
+                } catch (error) {
+                    console.error('Error uploading image:', error);
+                    throw new AppError('Error uploading image', 500);
+                }
+            }));
+
+            // Combine with existing images
+            updateData.images = [...(question.images || []), ...newImages];
+        }
+
+        // Handle image deletions
+        if (req.body.deleteImages) {
+            const deleteIndices = Array.isArray(req.body.deleteImages) ? 
+                                req.body.deleteImages.map(Number) : 
+                                [Number(req.body.deleteImages)];
+            
+            // Keep only non-deleted images
+            updateData.images = (updateData.images || question.images).filter((_, index) => 
+                !deleteIndices.includes(index)
+            );
+        }
+
+        // Update image captions for existing images
+        if (req.body.existingImageCaptions && updateData.images) {
+            const captions = Array.isArray(req.body.existingImageCaptions) ?
+                           req.body.existingImageCaptions :
+                           [req.body.existingImageCaptions];
+            
+            updateData.images = updateData.images.map((image, index) => ({
+                ...image,
+                caption: captions[index] ? captions[index].trim() : image.caption
+            }));
+        }
+
+        // Update the question
+        const updatedQuestion = await Question.findByIdAndUpdate(
+            req.params.id,
+            updateData,
+            {
+                new: true,
+                runValidators: true
+            }
+        );
+
+        if (!updatedQuestion) {
+            throw new AppError('Failed to update question', 500);
+        }
+
         req.flash('success', 'Question updated successfully');
-        res.redirect(`/exams/${req.params.examId}/questions/${question._id}`);
+        res.redirect(`/exams/${req.params.examId}/questions/${updatedQuestion._id}`);
     } catch (error) {
-        console.error('Error in postEditQuestion:', error);
-        req.flash('error', error.message || 'Error updating question');
-        res.redirect(`/exams/${req.params.examId}/questions/${req.params.id}/edit`);
+        // Pass error to error handling middleware
+        next(error);
     }
 };
 

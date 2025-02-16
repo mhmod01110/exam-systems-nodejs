@@ -120,8 +120,13 @@
                                     <a href="/exams/<%= exam._id %>" class="list-group-item list-group-item-action">
                                         <div class="d-flex w-100 justify-content-between">
                                             <h6 class="mb-1"><%= exam.title %></h6>
-                                            <small class="badge bg-<%= exam.isPublished ? 'success' : 'warning' %>">
-                                                <%= exam.isPublished ? 'Published' : 'Draft' %>
+                                            <small class="badge <%= 
+                                                exam.status === 'PUBLISHED' ? 'bg-success' : 
+                                                exam.status === 'DRAFT' ? 'bg-warning text-dark' : 
+                                                exam.status === 'ARCHIVED' ? 'bg-secondary' : 
+                                                'bg-primary' 
+                                            %>">
+                                                <%= exam.status %>
                                             </small>
                                         </div>
                                         <small class="text-muted">

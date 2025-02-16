@@ -137,84 +137,130 @@
 <!-- Form Validation Script -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form');
+    const form = document.querySelector('.needs-validation');
     const typeSelect = document.getElementById('type');
     const optionsSection = document.getElementById('optionsSection');
     const imageContainer = document.getElementById('imageContainer');
     const addImageBtn = document.getElementById('addImage');
 
-    // Handle question type change
-    function handleQuestionTypeChange() {
-        optionsSection.innerHTML = '';
-        
-        switch(typeSelect.value) {
-            case 'MCQ':
-                optionsSection.innerHTML = `
-                    <div class="mb-4">
-                        <label class="form-label">Options</label>
-                        <div id="mcqOptions">
-                            <div class="option-row mb-2">
-                                <div class="input-group">
-                                    <div class="input-group-text">
-                                        <input type="radio" name="correctOption" value="0" required>
-                                    </div>
-                                    <input type="text" name="options[0][text]" class="form-control" required placeholder="Option 1">
-                                    <button type="button" class="btn btn-danger remove-option" disabled>
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="option-row mb-2">
-                                <div class="input-group">
-                                    <div class="input-group-text">
-                                        <input type="radio" name="correctOption" value="1" required>
-                                    </div>
-                                    <input type="text" name="options[1][text]" class="form-control" required placeholder="Option 2">
-                                    <button type="button" class="btn btn-danger remove-option" disabled>
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-secondary mt-2" id="addOption">
-                            <i class="fas fa-plus"></i> Add Option
-                        </button>
+    // Enhanced form validation
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        // Additional validation for MCQ questions
+        if (typeSelect.value === 'MCQ') {
+            const mcqOptions = document.getElementById('mcqOptions');
+            const options = mcqOptions ? mcqOptions.querySelectorAll('.option-row') : [];
+            const selectedCorrectOption = form.querySelector('input[name="correctOption"]:checked');
+
+            if (options.length < 2) {
+                event.preventDefault();
+                alert('MCQ questions must have at least 2 options!');
+                return;
+            }
+
+            if (!selectedCorrectOption) {
+                event.preventDefault();
+                alert('Please select the correct answer for the MCQ question!');
+                return;
+            }
+        }
+
+        form.classList.add('was-validated');
+    });
+
+    // Function to create MCQ options section
+    function createMCQSection() {
+        optionsSection.innerHTML = `
+            <div class="mb-4">
+                <label class="form-label">Options</label>
+                <div id="mcqOptions">
+                    <!-- Options will be added here -->
+                </div>
+                <button type="button" class="btn btn-secondary mt-2" id="addOption">
+                    <i class="fas fa-plus"></i> Add Option
+                </button>
+                <div class="form-text text-danger">
+                    * At least 2 options are required. Select the correct answer using the radio button.
+                </div>
+            </div>
+        `;
+
+        const mcqOptions = document.getElementById('mcqOptions');
+        const addOptionBtn = document.getElementById('addOption');
+
+        // Function to add new option
+        function addOption() {
+            const optionCount = mcqOptions.children.length;
+            const newOption = document.createElement('div');
+            newOption.className = 'option-row mb-2';
+            newOption.innerHTML = `
+                <div class="input-group">
+                    <div class="input-group-text">
+                        <input type="radio" name="correctOption" value="${optionCount}" required>
                     </div>
-                `;
-                
-                // Add option button handler
-                document.getElementById('addOption').addEventListener('click', function() {
-                    const optionsContainer = document.getElementById('mcqOptions');
-                    const optionCount = optionsContainer.children.length;
-                    
-                    const optionRow = document.createElement('div');
-                    optionRow.className = 'option-row mb-2';
-                    optionRow.innerHTML = `
-                        <div class="input-group">
-                            <div class="input-group-text">
-                                <input type="radio" name="correctOption" value="${optionCount}" required>
-                            </div>
-                            <input type="text" name="options[${optionCount}][text]" class="form-control" required placeholder="Option ${optionCount + 1}">
-                            <button type="button" class="btn btn-danger remove-option">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                    `;
-                    optionsContainer.appendChild(optionRow);
+                    <input type="text" 
+                           name="options[]" 
+                           class="form-control"
+                           placeholder="Option ${optionCount + 1}"
+                           required>
+                    <button type="button" 
+                            class="btn btn-danger remove-option"
+                            ${optionCount < 2 ? 'disabled' : ''}>
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            mcqOptions.appendChild(newOption);
+            updateRemoveButtons();
+        }
+
+        // Function to update remove buttons state
+        function updateRemoveButtons() {
+            const removeButtons = mcqOptions.querySelectorAll('.remove-option');
+            removeButtons.forEach(btn => {
+                btn.disabled = mcqOptions.children.length <= 2;
+            });
+        }
+
+        // Add initial two options
+        addOption();
+        addOption();
+
+        // Add option button click handler
+        addOptionBtn.addEventListener('click', addOption);
+
+        // Remove option button click handler
+        mcqOptions.addEventListener('click', function(e) {
+            if (e.target.closest('.remove-option')) {
+                const optionRow = e.target.closest('.option-row');
+                if (mcqOptions.children.length > 2) {
+                    optionRow.remove();
+                    // Update radio values and placeholders
+                    mcqOptions.querySelectorAll('[name="correctOption"]').forEach((radio, index) => {
+                        radio.value = index;
+                    });
+                    mcqOptions.querySelectorAll('[name="options[]"]').forEach((input, index) => {
+                        input.placeholder = `Option ${index + 1}`;
+                    });
                     updateRemoveButtons();
-                });
-                
-                // Remove option handler
-                document.getElementById('mcqOptions').addEventListener('click', function(e) {
-                    if (e.target.classList.contains('remove-option') || 
-                        e.target.closest('.remove-option')) {
-                        e.target.closest('.option-row').remove();
-                        updateRemoveButtons();
-                        renumberOptions();
-                    }
-                });
+                }
+            }
+        });
+    }
+
+    // Question type change handler
+    typeSelect.addEventListener('change', function() {
+        const selectedType = this.value;
+        
+        switch(selectedType) {
+            case 'MCQ':
+                createMCQSection();
                 break;
-                
+
             case 'TrueFalse':
                 optionsSection.innerHTML = `
                     <div class="mb-4">
@@ -253,19 +299,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 
             case 'Essay':
                 optionsSection.innerHTML = `
-                    <div class="alert alert-info mb-4">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Essay questions will be manually graded.
+                    <div class="mb-4">
+                        <label for="modelAnswer" class="form-label">Model Answer</label>
+                        <textarea name="modelAnswer" 
+                                 id="modelAnswer" 
+                                 class="form-control"
+                                 rows="4"
+                                 placeholder="Enter a model answer for grading reference"></textarea>
+                        <div class="form-text">
+                            Provide a model answer to help with grading (optional).
+                        </div>
                     </div>
                 `;
                 break;
+                
+            default:
+                optionsSection.innerHTML = '';
         }
-    }
-
-    // Initial setup for question type
-    typeSelect.addEventListener('change', handleQuestionTypeChange);
-    // Call once to set up initial state if needed
-    handleQuestionTypeChange();
+    });
 
     // Add image field
     addImageBtn.addEventListener('click', function() {
@@ -293,17 +344,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Update remove buttons state
-    function updateRemoveButtons() {
-        const removeButtons = document.querySelectorAll('.remove-option');
-        const optionsContainer = document.getElementById('mcqOptions');
-        if (optionsContainer) {
-            removeButtons.forEach(button => {
-                button.disabled = optionsContainer.children.length <= 2;
-            });
-        }
-    }
-
     // Update remove image buttons state
     function updateRemoveImageButtons() {
         const removeButtons = imageContainer.querySelectorAll('.remove-image');
@@ -311,49 +351,5 @@ document.addEventListener('DOMContentLoaded', function() {
             button.disabled = imageContainer.children.length <= 1;
         });
     }
-
-    // Renumber MCQ options
-    function renumberOptions() {
-        const options = document.querySelectorAll('.option-row');
-        options.forEach((option, index) => {
-            option.querySelector('input[type="radio"]').value = index;
-            option.querySelector('input[type="text"]').name = `options[${index}][text]`;
-        });
-    }
-
-    // Form validation
-    form.addEventListener('submit', function(e) {
-        if (!form.checkValidity()) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-        
-        // Additional validation for MCQ questions
-        if (typeSelect.value === 'MCQ') {
-            const options = document.querySelectorAll('.option-row');
-            const correctOption = document.querySelector('input[name="correctOption"]:checked');
-            
-            if (options.length < 2 || !correctOption) {
-                e.preventDefault();
-                alert('MCQ questions must have at least 2 options and one correct answer.');
-            }
-        }
-        
-        // Additional validation for True/False questions
-        if (typeSelect.value === 'TrueFalse' && !document.querySelector('input[name="correctAnswer"]:checked')) {
-            e.preventDefault();
-            alert('Please select the correct answer for the True/False question.');
-        }
-        
-        // Additional validation for Short Answer questions
-        if (typeSelect.value === 'ShortAnswer' && !document.getElementById('correctAnswer').value.trim()) {
-            e.preventDefault();
-            alert('Please provide the correct answer for the Short Answer question.');
-        }
-        
-        form.classList.add('was-validated');
-    });
 });
 </script>
-
-<%- include('../partials/footer') %> 
