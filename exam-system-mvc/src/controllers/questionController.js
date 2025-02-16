@@ -1,5 +1,8 @@
 const Question = require('../models/Question');
 const Exam = require('../models/Exam');
+const ExamAttempt = require('../models/ExamAttempt');
+const Submission = require('../models/Submission');
+const Result = require('../models/Result');
 
 // Display question list for an exam
 exports.getQuestions = async (req, res) => {
@@ -180,6 +183,11 @@ exports.postEditQuestion = async (req, res, next) => {
             tags: req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : []
         };
 
+        // Store old correct answer for comparison
+        let oldCorrectAnswer;
+        let correctAnswerChanged = false;
+        let correctOptionIndex;
+
         // Handle MCQ specific data
         if (question.type === 'MCQ') {
             let optionsArray = Array.isArray(req.body['options[]']) ? 
@@ -191,18 +199,24 @@ exports.postEditQuestion = async (req, res, next) => {
                 throw new AppError('MCQ questions must have at least 2 options', 400);
             }
 
-            const correctOptionIndex = parseInt(req.body.correctOption);
+            correctOptionIndex = parseInt(req.body.correctOption);
             
             // Validate correct option
             if (isNaN(correctOptionIndex) || correctOptionIndex < 0 || correctOptionIndex >= optionsArray.length) {
                 throw new AppError('Invalid correct option selected', 400);
             }
 
+            // Store old correct answer
+            oldCorrectAnswer = question.options.findIndex(opt => opt.isCorrect);
+
             // Format options with correct answer
             updateData.options = optionsArray.map((text, index) => ({
                 text: text.trim(),
                 isCorrect: index === correctOptionIndex
             }));
+
+            // Check if correct answer changed
+            correctAnswerChanged = oldCorrectAnswer !== correctOptionIndex;
         }
 
         // Handle image uploads using express-fileupload
@@ -274,11 +288,107 @@ exports.postEditQuestion = async (req, res, next) => {
             throw new AppError('Failed to update question', 500);
         }
 
-        req.flash('success', 'Question updated successfully');
+        // If correct answer changed, update related models
+        if (correctAnswerChanged) {
+            // 1. Update ExamAttempts
+            const examAttempts = await ExamAttempt.find({
+                'questions.question': question._id,
+                status: 'SUBMITTED'
+            });
+
+            // 2. Update Submissions
+            const submissions = await Submission.find({
+                examId: question.examId,
+                status: 'SUBMITTED',
+                $or: [
+                    { 'answers.questionId': question._id },
+                    { 'tfAnswers.questionId': question._id }
+                ]
+            });
+
+            // 3. Update Results
+            const results = await Result.find({
+                examId: question.examId,
+                'questionResults.questionId': question._id
+            });
+
+            // Process each model's updates
+            await Promise.all([
+                // Update ExamAttempts
+                ...examAttempts.map(async attempt => {
+                    const questionAttempt = attempt.questions.find(q => 
+                        q.question.toString() === question._id.toString()
+                    );
+                    if (questionAttempt) {
+                        // Recalculate marks based on new correct answer
+                        if (question.type === 'MCQ') {
+                            const selectedOptionIndex = parseInt(questionAttempt.answer);
+                            questionAttempt.marks = selectedOptionIndex === correctOptionIndex ? 
+                                                  updatedQuestion.marks : 0;
+                        }
+                        // Recalculate total marks
+                        attempt.totalMarks = attempt.questions.reduce((sum, q) => sum + q.marks, 0);
+                        await attempt.save();
+                    }
+                }),
+
+                // Update Submissions
+                ...submissions.map(async submission => {
+                    if (question.type === 'MCQ') {
+                        const answer = submission.answers.find(a => 
+                            a.questionId.toString() === question._id.toString()
+                        );
+                        if (answer) {
+                            const selectedOptionIndex = parseInt(answer.selectedOption);
+                            answer.isCorrect = selectedOptionIndex === correctOptionIndex;
+                            answer.marksObtained = answer.isCorrect ? updatedQuestion.marks : 0;
+                            submission.totalMarksObtained = submission.answers.reduce(
+                                (sum, a) => sum + a.marksObtained, 0
+                            );
+                            await submission.save();
+                        }
+                    }
+                }),
+
+                // Update Results
+                ...results.map(async result => {
+                    const questionResult = result.questionResults.find(qr => 
+                        qr.questionId.toString() === question._id.toString()
+                    );
+                    if (questionResult) {
+                        if (question.type === 'MCQ') {
+                            const submission = await Submission.findById(result.submissionId);
+                            if (submission) {
+                                const answer = submission.answers.find(a => 
+                                    a.questionId.toString() === question._id.toString()
+                                );
+                                if (answer) {
+                                    questionResult.isCorrect = answer.isCorrect;
+                                    questionResult.obtainedMarks = answer.marksObtained;
+                                    // Recalculate total marks and percentage
+                                    result.obtainedMarks = result.questionResults.reduce(
+                                        (sum, qr) => sum + qr.obtainedMarks, 0
+                                    );
+                                    result.percentage = (result.obtainedMarks / result.totalMarks) * 100;
+                                    result.status = result.percentage >= 50 ? 'PASS' : 'FAIL';
+                                    await result.save();
+                                }
+                            }
+                        }
+                    }
+                })
+            ]);
+
+            req.flash('success', 'Question updated successfully. All related submissions and results have been recalculated.');
+        } else {
+            req.flash('success', 'Question updated successfully');
+        }
+
         res.redirect(`/exams/${req.params.examId}/questions/${updatedQuestion._id}`);
     } catch (error) {
-        // Pass error to error handling middleware
-        next(error);
+        console.error('Error in postEditQuestion:', error);
+        req.flash('error', error.message || 'Error updating question');
+        res.redirect(`/exams/${req.params.examId}/questions/${req.params.id}/edit`);
     }
 };
 
