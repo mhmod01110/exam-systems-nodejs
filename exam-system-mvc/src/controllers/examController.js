@@ -213,9 +213,17 @@ exports.postEditExam = async (req, res) => {
             req.flash('error', 'End date must be after start date');
             return res.redirect(`/exams/${exam._id}/edit`);
         }
+
+        // Convert checkbox values to boolean
+        const formData = {
+            ...req.body,
+            shuffleQuestions: req.body.shuffleQuestions === 'on',
+            showResults: req.body.showResults === 'on',
+            isPublic: req.body.isPublic === 'on'
+        };
         
         // Update exam
-        await Exam.findByIdAndUpdate(req.params.id, req.body, {
+        await Exam.findByIdAndUpdate(req.params.id, formData, {
             new: true,
             runValidators: true
         });

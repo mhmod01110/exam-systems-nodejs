@@ -1,0 +1,51 @@
+<div class="content-wrapper" style="min-height: 823px;">
+
+    <div class="modal fade" id="formModel" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+            <h1 class="m-0 text-dark mt-3">Room close in: <span id="timer"></span></h1>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+
+
+        function callMe(data) {
+            document.getElementById('names').value = data;
+            $('#formModel').modal('show');
+        }
+
+        document.getElementById('timer').innerHTML = '2:00';
+
+        startTimer();
+        function startTimer() {
+            var presentTime = document.getElementById('timer').innerHTML;
+            var timeArray = presentTime.split(/[:]+/);
+            var m = timeArray[0];
+            var s = checkSecond((timeArray[1] - 1));
+            if (s == 59) { m = m - 1 };
+            if (m < 0) {
+                window.location.reload()
+                return;
+            }
+
+            if (s < 10 && m == "00") {
+                document.getElementById("clicable1").disabled = true;
+                document.getElementById("clicable2").disabled = true;
+                document.getElementById("insert").disabled = true;
+            }
+
+            document.getElementById('timer').innerHTML = m + ":" + s;
+            setTimeout(startTimer, 1000);
+        }
+
+        function checkSecond(sec) {
+            if (sec < 10 && sec >= 0) { sec = "0" + sec };
+            if (sec < 0) { sec = "59" };
+            return sec;
+        }
+</script>

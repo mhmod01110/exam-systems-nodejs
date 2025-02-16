@@ -49,18 +49,18 @@ app.use(fileUpload());
 app.use(morgan('dev'));
 
 // Security middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
-      scriptSrc: ["'self'", "'unsafe-inline'", 'https:'],
-      imgSrc: ["'self'", 'data:', 'https:'],
-    },
-  },
-  frameguard: { action: 'sameorigin' },  // Fix for X-Frame-Options issue
-  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-}));
+// app.use(helmet({
+//   contentSecurityPolicy: {
+//     directives: {
+//       defaultSrc: ["'self'"],
+//       styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
+//       scriptSrc: ["'self'", "'unsafe-inline'", 'https:'],
+//       imgSrc: ["'self'", 'data:', 'https:'],
+//     },
+//   },
+//   frameguard: { action: 'sameorigin' },  // Fix for X-Frame-Options issue
+//   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+// }));
 
 // Session configuration
 app.use(session({

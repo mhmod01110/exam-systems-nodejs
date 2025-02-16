@@ -7,10 +7,10 @@
               <div class="d-flex justify-content-between align-items-center">
                 <h3 class="mb-0"><%= attempt.exam.title %></h3>
                 <div class="d-flex align-items-center">
-                  <div class="me-4">
+                  <!-- <div class="me-4">
                     <strong>Time Remaining:</strong>
-                    <span id="timer" data-end-time="<%= new Date(attempt.endTime).toISOString() %>">Calculating...</span>
-                </div>
+                    <span id="timer" data-end-time="<%= attempt.endTime.getTime() %>" style="font-weight: bold; font-size: 1.2em; margin-left: 10px;">Initializing...</span>
+                  </div> -->
                 </div>
               </div>
             </div>
@@ -139,187 +139,202 @@
 </style>
 
 <script defer>
-//   const attempt = JSON.parse('<%- JSON.stringify(attempt) %>');
-  
-  document.addEventListener('DOMContentLoaded', function() {
-    const timerElement = document.getElementById('timer');
-    const endTime = new Date(timerElement.dataset.endTime).getTime();
+document.addEventListener('DOMContentLoaded', function() {
     const examForm = document.getElementById('examForm');
     const submitButton = document.getElementById('submitButton');
     const globalWarning = document.getElementById('globalWarning');
     const questionInputs = document.querySelectorAll('.question-input');
     const warningMessages = document.querySelectorAll('.unanswered-warning');
-  
+    const timerElement = document.getElementById('timer');
+    
     let isValidating = false;
-  
-    // Timer function remains the same...
-    
-    function isQuestionAnswered(input) {
-      if (input.type === 'radio') {
-        const name = input.name;
-        const radioGroup = document.querySelectorAll(`input[name="${name}"]`);
-        return Array.from(radioGroup).some(radio => radio.checked);
-      } else if (input.tagName.toLowerCase() === 'textarea') {
-        return input.value.trim().length > 0;
-      }
-      return false;
-    }
-  
-    function highlightUnansweredQuestions() {
-      const processedQuestions = new Set();
-      let hasUnanswered = false;
-      let firstUnanswered = null;
-  
-      questionInputs.forEach(input => {
-        const questionIndex = input.dataset.questionIndex;
-        const name = input.name;
-  
-        if (!processedQuestions.has(name)) {
-          processedQuestions.add(name);
-          
-          const isAnswered = isQuestionAnswered(input);
-          const warningElement = warningMessages[questionIndex];
-          const questionCard = document.getElementById(`question-card-${questionIndex}`);
-          
-          if (!isAnswered) {
-            hasUnanswered = true;
-            if (!firstUnanswered) {
-              firstUnanswered = questionCard;
-            }
-            
-            // Show warning and highlight card
-            warningElement.classList.remove('d-none');
-            questionCard.classList.add('question-unanswered');
-            questionCard.classList.add('warning-shake');
-            
-            // Remove shake animation after it completes
-            setTimeout(() => {
-              questionCard.classList.remove('warning-shake');
-            }, 1000);
-          } else {
-            warningElement.classList.add('d-none');
-            questionCard.classList.remove('question-unanswered');
-          }
-        }
-      });
-  
-      if (hasUnanswered) {
-        globalWarning.classList.remove('d-none');
-        globalWarning.classList.add('warning-shake');
-        setTimeout(() => {
-          globalWarning.classList.remove('warning-shake');
-        }, 1000);
-        
-        if (firstUnanswered) {
-          firstUnanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      } else {
-        globalWarning.classList.add('d-none');
-      }
-      
-      submitButton.disabled = hasUnanswered;
-      return !hasUnanswered;
-    }
-  
-    function validateForm(event) {
-      if (event) {
-        event.preventDefault();
-      }
-      
-      if (isValidating) {
-        return false;
-      }
-      
-      isValidating = true;
-      const isValid = highlightUnansweredQuestions();
-      
-      if (isValid) {
-        if (event) {
-          const confirmSubmit = confirm('Are you sure you want to submit your exam?');
-          if (confirmSubmit) {
-            questionInputs.forEach(input => {
-              localStorage.removeItem(`exam_${attempt._id}_${input.name}`);
-            });
-            examForm.submit();
-          }
-        }
-      }
-      
-      isValidating = false;
-      return false;
-    }
-  
-    // Auto-save functionality remains the same...
-    
-    // Initial validation on page load
-    setTimeout(highlightUnansweredQuestions, 500);
-  
-    // Input event listeners
-    questionInputs.forEach(input => {
-      const savedValue = localStorage.getItem(`exam_${attempt._id}_${input.name}`);
-      if (savedValue) {
-        if (input.type === 'radio') {
-          if (input.value === savedValue) {
-            input.checked = true;
-          }
-        } else {
-          input.value = savedValue;
-        }
-      }
-  
-      input.addEventListener('change', function() {
-        localStorage.setItem(`exam_${attempt._id}_${input.name}`, input.value);
-        highlightUnansweredQuestions();
-      });
-  
-      if (input.tagName.toLowerCase() === 'textarea') {
-        input.addEventListener('input', function() {
-          localStorage.setItem(`exam_${attempt._id}_${input.name}`, input.value);
-          highlightUnansweredQuestions();
-        });
-      }
-    });
-  
-    examForm.addEventListener('submit', validateForm);
-  });
 
-  // Timer and form validation logic
-document.addEventListener('DOMContentLoaded', function() {
-  const timerElement = document.getElementById('timer');
-  const endTimeString = timerElement.dataset.endTime;
-  
-  function updateTimer() {
+    // TEST: Set a static end time 2 hours from now
     const now = new Date().getTime();
-    const endTime = new Date(endTimeString).getTime();
-    const timeDiff = endTime - now;
+    const endTime = now + (2 * 60 * 60 * 1000); // 2 hours from now
+    console.log('Current time:', now);
+    console.log('End time:', endTime);
+    
+    let timerInterval = null;
 
-    if (timeDiff <= 0) {
-      timerElement.textContent = "00:00:00";
-      document.getElementById('examForm').submit(); // Auto-submit when time is up
-      return;
+    function updateTimer() {
+        const currentTime = new Date().getTime();
+        const timeLeft = Math.floor((endTime - currentTime) / 1000); // Convert to seconds
+        console.log('Time left in seconds:', timeLeft);
+
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            timerElement.innerHTML = "00:00:00";
+            timerElement.style.color = 'red';
+            disableAllInputs();
+            examForm.submit();
+            return;
+        }
+
+        const hours = Math.floor(timeLeft / 3600);
+        const minutes = Math.floor((timeLeft % 3600) / 60);
+        const seconds = timeLeft % 60;
+
+        // Warning colors
+        if (hours === 0) {
+            if (minutes === 0) {
+                timerElement.style.color = '#dc3545'; // red color
+                if (seconds < 10) {
+                    timerElement.style.fontWeight = 'bold';
+                }
+            } else if (minutes === 1) {
+                timerElement.style.color = '#ffc107'; // yellow color
+            }
+        }
+
+        // Format time with leading zeros
+        const formattedTime = 
+            (hours < 10 ? "0" + hours : hours) + ":" +
+            (minutes < 10 ? "0" + minutes : minutes) + ":" + 
+            (seconds < 10 ? "0" + seconds : seconds);
+
+        timerElement.innerHTML = formattedTime;
     }
 
-    // Calculate hours, minutes, seconds
-    const hours = Math.floor(timeDiff / (1000 * 60 * 60));
-    const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+    function disableAllInputs() {
+        questionInputs.forEach(input => {
+            input.disabled = true;
+        });
+        submitButton.disabled = true;
+    }
 
-    // Format with leading zeros
-    const formattedTime = [hours, minutes, seconds]
-      .map(unit => unit.toString().padStart(2, '0'))
-      .join(':');
+    // Start the timer immediately
+    updateTimer(); // Initial call
+    timerInterval = setInterval(updateTimer, 1000);
 
-    timerElement.textContent = formattedTime;
-  }
+    // Cleanup interval when page is unloaded
+    window.addEventListener('beforeunload', function() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+        }
+    });
 
-  // Start the timer if we have a valid end time
-  if (endTimeString) {
-    updateTimer(); // Run immediately
-    setInterval(updateTimer, 1000); // Update every second
-  } else {
-    timerElement.textContent = "Invalid time";
-    console.error("No end time provided");
-  }
+    // Rest of your existing validation code...
+    function isQuestionAnswered(input) {
+        if (input.type === 'radio') {
+            const name = input.name;
+            const radioGroup = document.querySelectorAll(`input[name="${name}"]`);
+            return Array.from(radioGroup).some(radio => radio.checked);
+        } else if (input.tagName.toLowerCase() === 'textarea') {
+            return input.value.trim().length > 0;
+        }
+        return false;
+    }
+
+    function highlightUnansweredQuestions() {
+        const processedQuestions = new Set();
+        let hasUnanswered = false;
+        let firstUnanswered = null;
+
+        questionInputs.forEach(input => {
+            const questionIndex = input.dataset.questionIndex;
+            const name = input.name;
+
+            if (!processedQuestions.has(name)) {
+                processedQuestions.add(name);
+                
+                const isAnswered = isQuestionAnswered(input);
+                const warningElement = warningMessages[questionIndex];
+                const questionCard = document.getElementById(`question-card-${questionIndex}`);
+                
+                if (!isAnswered) {
+                    hasUnanswered = true;
+                    if (!firstUnanswered) {
+                        firstUnanswered = questionCard;
+                    }
+                    
+                    warningElement.classList.remove('d-none');
+                    questionCard.classList.add('question-unanswered');
+                    questionCard.classList.add('warning-shake');
+                    
+                    setTimeout(() => {
+                        questionCard.classList.remove('warning-shake');
+                    }, 1000);
+                } else {
+                    warningElement.classList.add('d-none');
+                    questionCard.classList.remove('question-unanswered');
+                }
+            }
+        });
+
+        if (hasUnanswered) {
+            globalWarning.classList.remove('d-none');
+            globalWarning.classList.add('warning-shake');
+            setTimeout(() => {
+                globalWarning.classList.remove('warning-shake');
+            }, 1000);
+            
+            if (firstUnanswered) {
+                firstUnanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        } else {
+            globalWarning.classList.add('d-none');
+        }
+        
+        submitButton.disabled = hasUnanswered;
+        return !hasUnanswered;
+    }
+
+    function validateForm(event) {
+        if (event) {
+            event.preventDefault();
+        }
+        
+        if (isValidating) {
+            return false;
+        }
+        
+        isValidating = true;
+        const isValid = highlightUnansweredQuestions();
+        
+        if (isValid) {
+            if (event) {
+                const confirmSubmit = confirm('Are you sure you want to submit your exam?');
+                if (confirmSubmit) {
+                    questionInputs.forEach(input => {
+                        localStorage.removeItem(`exam_${attempt._id}_${input.name}`);
+                    });
+                    examForm.submit();
+                }
+            }
+        }
+        
+        isValidating = false;
+        return false;
+    }
+
+    // Auto-save functionality
+    questionInputs.forEach(input => {
+        const savedValue = localStorage.getItem(`exam_${attempt._id}_${input.name}`);
+        if (savedValue) {
+            if (input.type === 'radio') {
+                if (input.value === savedValue) {
+                    input.checked = true;
+                }
+            } else {
+                input.value = savedValue;
+            }
+        }
+
+        input.addEventListener('change', function() {
+            localStorage.setItem(`exam_${attempt._id}_${input.name}`, input.value);
+            highlightUnansweredQuestions();
+        });
+
+        if (input.tagName.toLowerCase() === 'textarea') {
+            input.addEventListener('input', function() {
+                localStorage.setItem(`exam_${attempt._id}_${input.name}`, input.value);
+                highlightUnansweredQuestions();
+            });
+        }
+    });
+
+    examForm.addEventListener('submit', validateForm);
 });
 </script>
 

@@ -127,6 +127,32 @@ exports.getDashboard = async (req, res) => {
           startDate: { $lte: new Date() },
           endDate: { $gte: new Date() }
         }).limit(5);
+
+        // Get submission counts for active exams
+        const submissionCounts = await Submission.aggregate([
+          {
+            $match: {
+              examId: { $in: activeExams.map(exam => exam._id) }
+            }
+          },
+          {
+            $group: {
+              _id: '$examId',
+              submissionCount: { $sum: 1 }
+            }
+          }
+        ]);
+
+        // Create a map of exam ID to submission count
+        const submissionCountMap = submissionCounts.reduce((acc, curr) => {
+          acc[curr._id.toString()] = curr.submissionCount;
+          return acc;
+        }, {});
+
+        // Add submission count to each active exam
+        activeExams.forEach(exam => {
+          exam.submissionCount = submissionCountMap[exam._id.toString()] || 0;
+        });
   
         res.render('dashboard', {
           title: 'Dashboard',
