@@ -1,3 +1,230 @@
+<%- contentFor('style') %>
+<style>
+  .question-unanswered {
+    background-color: #fff3cd !important;
+    border: 2px solid #ffc107 !important;
+    box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25) !important;
+  }
+
+  .alert-warning {
+    background-color: #fff3cd;
+    border-color: #ffeeba;
+    color: #856404;
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1rem;
+    display: block !important;
+  }
+
+  .warning-shake {
+    animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both;
+  }
+
+  @keyframes shake {
+    10%, 90% { transform: translate3d(-1px, 0, 0); }
+    20%, 80% { transform: translate3d(2px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+    40%, 60% { transform: translate3d(4px, 0, 0); }
+  }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const examForm = document.getElementById('examForm');
+    const submitButton = document.getElementById('submitButton');
+    const globalWarning = document.getElementById('globalWarning');
+    const questionInputs = document.querySelectorAll('.question-input');
+    const warningMessages = document.querySelectorAll('.unanswered-warning');
+    const timerElement = document.getElementById('timer');
+    
+    let isValidating = false;
+
+    // Use attempt start and end time
+    const endTime = Number('<%= attempt.endTime.getTime() %>');
+    // console.log('End time:', endTime);
+    
+    let timerInterval = null;
+
+    function updateTimer() {
+        const currentTime = new Date().getTime();
+        const timeLeft = Math.floor((endTime - currentTime) / 1000); // Convert to seconds
+        // console.log('Time left in seconds:', timeLeft);
+
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            timerElement.innerHTML = "00:00:00";
+            timerElement.style.color = 'red';
+            disableAllInputs();
+            examForm.submit();
+            return;
+        }
+
+        const hours = Math.floor(timeLeft / 3600);
+        const minutes = Math.floor((timeLeft % 3600) / 60);
+        const seconds = timeLeft % 60;
+
+        // Warning colors
+        if (hours === 0) {
+            if (minutes === 0) {
+                timerElement.style.color = '#dc3545'; // red color
+                if (seconds < 10) {
+                    timerElement.style.fontWeight = 'bold';
+                }
+            } else if (minutes === 1) {
+                timerElement.style.color = '#ffc107'; // yellow color
+            }
+        }
+
+        // Format time with leading zeros
+        const formattedTime = 
+            (hours < 10 ? "0" + hours : hours) + ":" +
+            (minutes < 10 ? "0" + minutes : minutes) + ":" + 
+            (seconds < 10 ? "0" + seconds : seconds);
+
+        timerElement.innerHTML = formattedTime;
+    }
+
+    function disableAllInputs() {
+        questionInputs.forEach(input => {
+            input.disabled = true;
+        });
+        submitButton.disabled = true;
+    }
+
+    // Start the timer immediately
+    updateTimer(); // Initial call
+    timerInterval = setInterval(updateTimer, 1000);
+
+    // Cleanup interval when page is unloaded
+    window.addEventListener('beforeunload', function() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+        }
+    });
+
+    function isQuestionAnswered(input) {
+        if (input.type === 'radio') {
+            const name = input.name;
+            const radioGroup = document.querySelectorAll(`input[name="${name}"]`);
+            return Array.from(radioGroup).some(radio => radio.checked);
+        } else if (input.tagName.toLowerCase() === 'textarea') {
+            return input.value.trim().length > 0;
+        }
+        return false;
+    }
+
+    function highlightUnansweredQuestions() {
+        const processedQuestions = new Set();
+        let hasUnanswered = false;
+        let firstUnanswered = null;
+
+        questionInputs.forEach(input => {
+            const questionIndex = input.dataset.questionIndex;
+            const name = input.name;
+
+            if (!processedQuestions.has(name)) {
+                processedQuestions.add(name);
+                
+                const isAnswered = isQuestionAnswered(input);
+                const warningElement = warningMessages[questionIndex];
+                const questionCard = document.getElementById(`question-card-${questionIndex}`);
+                
+                if (!isAnswered) {
+                    hasUnanswered = true;
+                    if (!firstUnanswered) {
+                        firstUnanswered = questionCard;
+                    }
+                    
+                    warningElement.classList.remove('d-none');
+                    questionCard.classList.add('question-unanswered');
+                    questionCard.classList.add('warning-shake');
+                    
+                    setTimeout(() => {
+                        questionCard.classList.remove('warning-shake');
+                    }, 1000);
+                } else {
+                    warningElement.classList.add('d-none');
+                    questionCard.classList.remove('question-unanswered');
+                }
+            }
+        });
+
+        if (hasUnanswered) {
+            globalWarning.classList.remove('d-none');
+            globalWarning.classList.add('warning-shake');
+            setTimeout(() => {
+                globalWarning.classList.remove('warning-shake');
+            }, 1000);
+            
+            if (firstUnanswered) {
+                firstUnanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        } else {
+            globalWarning.classList.add('d-none');
+        }
+        
+        submitButton.disabled = hasUnanswered;
+        return !hasUnanswered;
+    }
+
+    function validateForm(event) {
+        if (event) {
+            event.preventDefault();
+        }
+        
+        if (isValidating) {
+            return false;
+        }
+        
+        isValidating = true;
+        const isValid = highlightUnansweredQuestions();
+        
+        if (isValid) {
+            if (event) {
+                const confirmSubmit = confirm('Are you sure you want to submit your exam?');
+                if (confirmSubmit) {
+                    questionInputs.forEach(input => {
+                        localStorage.removeItem(`exam_${attempt._id}_${input.name}`);
+                    });
+                    examForm.submit();
+                }
+            }
+        }
+        
+        isValidating = false;
+        return false;
+    }
+
+    // Auto-save functionality
+    questionInputs.forEach(input => {
+        const savedValue = localStorage.getItem(`exam_<%= attempt._id %>_${input.name}`);
+        if (savedValue) {
+            if (input.type === 'radio') {
+                if (input.value === savedValue) {
+                    input.checked = true;
+                }
+            } else {
+                input.value = savedValue;
+            }
+        }
+
+        input.addEventListener('change', function() {
+            localStorage.setItem(`exam_<%= attempt._id %>_${input.name}`, input.value);
+            highlightUnansweredQuestions();
+        });
+
+        if (input.tagName.toLowerCase() === 'textarea') {
+            input.addEventListener('input', function() {
+                localStorage.setItem(`exam_<%= attempt._id %>_${input.name}`, input.value);
+                highlightUnansweredQuestions();
+            });
+        }
+    });
+
+    examForm.addEventListener('submit', validateForm);
+});
+</script>
+
+<%- contentFor('body') %>
 <div class="container">
   <!-- Previous header code remains the same -->
   <div class="row">
@@ -109,5 +336,3 @@
     </div>
   </div>
 </div>
-
-<script src="/js/attempt.js"></script>
