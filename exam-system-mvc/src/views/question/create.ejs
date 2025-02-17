@@ -147,9 +147,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Enhanced form validation
     form.addEventListener('submit', function(event) {
+        event.preventDefault(); // Always prevent default first
+        
         if (!form.checkValidity()) {
-            event.preventDefault();
             event.stopPropagation();
+            form.classList.add('was-validated');
+            return false;
+        }
+
+        // Additional validation for MCQ questions
+        if (typeSelect.value === 'MCQ') {
+            const correctAnswers = Array.from(document.querySelectorAll('.is-correct-input'))
+                .filter(input => input.value === "true");
+            
+            if (correctAnswers.length !== 1) {
+                alert('Please select exactly one correct answer for the MCQ question.');
+                return false;
+            }
         }
 
         // Process images before submission
@@ -184,6 +198,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         form.classList.add('was-validated');
+        
+        // If we got here, all validations passed
+        form.submit();
     });
 
     // Function to handle image selection
@@ -330,13 +347,21 @@ document.addEventListener('DOMContentLoaded', function() {
             newOption.innerHTML = `
                 <div class="input-group">
                     <div class="input-group-text">
-                        <input type="radio" name="correctOption" value="${optionCount}" required>
+                        <input type="radio" 
+                               name="correctOption" 
+                               value="${optionCount}"
+                               required
+                               onchange="updateCorrectOption(this, ${optionCount})">
                     </div>
                     <input type="text" 
-                           name="options[]" 
+                           name="options[${optionCount}][text]" 
                            class="form-control"
                            placeholder="Option ${optionCount + 1}"
                            required>
+                    <input type="hidden" 
+                           name="options[${optionCount}][isCorrect]" 
+                           value="false"
+                           class="is-correct-input">
                     <button type="button" 
                             class="btn btn-danger remove-option"
                             ${optionCount < 2 ? 'disabled' : ''}>
@@ -347,6 +372,22 @@ document.addEventListener('DOMContentLoaded', function() {
             mcqOptions.appendChild(newOption);
             updateRemoveButtons();
         }
+
+        // Function to update isCorrect values
+        window.updateCorrectOption = function(radio, selectedIndex) {
+            if (!radio.checked) return;
+            
+            // Set all options to false first
+            const allHiddenInputs = mcqOptions.querySelectorAll('.is-correct-input');
+            allHiddenInputs.forEach(input => input.value = "false");
+            
+            // Set the selected option to true
+            const selectedHiddenInput = mcqOptions.querySelector(`input[name="options[${selectedIndex}][isCorrect]"]`);
+            if (selectedHiddenInput) {
+                selectedHiddenInput.value = "true";
+                console.log('Set option', selectedIndex, 'as correct answer');
+            }
+        };
 
         // Function to update remove buttons state
         function updateRemoveButtons() {
@@ -369,12 +410,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 const optionRow = e.target.closest('.option-row');
                 if (mcqOptions.children.length > 2) {
                     optionRow.remove();
-                    // Update radio values and placeholders
-                    mcqOptions.querySelectorAll('[name="correctOption"]').forEach((radio, index) => {
+                    // Reindex the remaining options
+                    mcqOptions.querySelectorAll('.option-row').forEach((row, index) => {
+                        const radio = row.querySelector('input[type="radio"]');
+                        const textInput = row.querySelector('input[type="text"]');
+                        const isCorrectInput = row.querySelector('.is-correct-input');
+                        
                         radio.value = index;
-                    });
-                    mcqOptions.querySelectorAll('[name="options[]"]').forEach((input, index) => {
-                        input.placeholder = `Option ${index + 1}`;
+                        textInput.name = `options[${index}][text]`;
+                        textInput.placeholder = `Option ${index + 1}`;
+                        isCorrectInput.name = `options[${index}][isCorrect]`;
                     });
                     updateRemoveButtons();
                 }

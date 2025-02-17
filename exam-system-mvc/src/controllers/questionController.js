@@ -76,16 +76,38 @@ exports.postCreateQuestion = async (req, res) => {
         
         // Validate MCQ options if question type is MCQ
         if (req.body.type === 'MCQ') {
-            if (!req.body.options || req.body.options.length < 2) {
+            // Extract and format options
+            const options = [];
+            const optionsData = req.body.options || [];
+            
+            // Convert options data to array if it's not already
+            const optionsArray = Array.isArray(optionsData) ? optionsData : [optionsData];
+            
+            // Process each option
+            for (let i = 0; i < optionsArray.length; i++) {
+                const option = optionsArray[i];
+                if (option && option.text) {
+                    options.push({
+                        text: option.text,
+                        isCorrect: option.isCorrect === 'true'
+                    });
+                }
+            }
+
+            // Validate options
+            if (options.length < 2) {
                 req.flash('error', 'MCQ questions must have at least 2 options');
                 return res.redirect(`/exams/${exam._id}/questions/create`);
             }
             
-            const correctOptions = req.body.options.filter(opt => opt.isCorrect);
-            if (correctOptions.length !== 1) {
+            const correctOptionsCount = options.filter(opt => opt.isCorrect).length;
+            if (correctOptionsCount !== 1) {
                 req.flash('error', 'MCQ questions must have exactly one correct answer');
                 return res.redirect(`/exams/${exam._id}/questions/create`);
             }
+
+            // Replace the options in req.body
+            req.body.options = options;
         }
         
         // Create question
