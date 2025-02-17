@@ -1,14 +1,13 @@
 <div class="container mt-4">
     <!-- Statistics Cards -->
     <div class="row mb-4">
-        <!-- Total Exams (always shown) -->
         <div class="col-md-3">
             <div class="card bg-primary text-white">
                 <div class="card-body text-center">
                     <h5 class="card-title">Total Exams</h5>
                     <h2 class="display-4"><%= stats.totalExams %></h2>
                     <p class="card-text">
-                        <% if (user.role === 'student') { %>
+    <% if (user.role === 'student') { %>
                             Exams Taken
                         <% } else if (user.role === 'teacher') { %>
                             Exams Created
@@ -18,72 +17,51 @@
                     </p>
                 </div>
             </div>
-        </div>
-
-        <!-- Average Score -->
+                    </div>
         <div class="col-md-3">
             <div class="card bg-info text-white">
                 <div class="card-body text-center">
                     <h5 class="card-title">Average Score</h5>
-                    <% if (user.role === 'student' && !stats.resultsReleased) { %>
-                        <h2 class="display-4">--</h2>
-                        <p class="card-text">Results Pending</p>
-                    <% } else { %>
-                        <h2 class="display-4"><%= stats.averageScore %>%</h2>
-                        <p class="card-text">
-                            <% if (user.role === 'student') { %>
-                                Your Average
-                            <% } else if (user.role === 'teacher') { %>
-                                Students Average
-                            <% } else { %>
-                                Overall Average
-                            <% } %>
-                        </p>
-                    <% } %>
+                    <h2 class="display-4"><%= stats.averageScore %>%</h2>
+                    <p class="card-text">
+                        <% if (user.role === 'student') { %>
+                            Your Average
+                        <% } else if (user.role === 'teacher') { %>
+                            Students Average
+                        <% } else { %>
+                            Overall Average
+                        <% } %>
+                    </p>
                 </div>
             </div>
         </div>
-
-        <!-- Passed Exams -->
         <div class="col-md-3">
             <div class="card bg-success text-white">
                 <div class="card-body text-center">
                     <h5 class="card-title">Passed Exams</h5>
-                    <% if (user.role === 'student' && !stats.resultsReleased) { %>
-                        <h2 class="display-4">--</h2>
-                        <p class="card-text">(Results Pending)</p>
-                    <% } else { %>
-                        <h2 class="display-4"><%= stats.examsPassed %></h2>
-                        <p class="card-text">
-                            <% if (stats.totalExams > 0) { %>
-                                (<%= ((stats.examsPassed / stats.totalExams) * 100).toFixed(1) %>%)
-                            <% } else { %>
-                                (0%)
-                            <% } %>
-                        </p>
-                    <% } %>
+                    <h2 class="display-4"><%= stats.examsPassed %></h2>
+                    <p class="card-text">
+                        <% if (stats.totalExams > 0) { %>
+                            (<%= ((stats.examsPassed / stats.totalExams) * 100).toFixed(1) %>%)
+                        <% } else { %>
+                            (0%)
+                        <% } %>
+                    </p>
                 </div>
             </div>
-        </div>
-
-        <!-- Failed Exams -->
+                    </div>
         <div class="col-md-3">
             <div class="card bg-danger text-white">
                 <div class="card-body text-center">
                     <h5 class="card-title">Failed Exams</h5>
-                    <% if (user.role === 'student' && !stats.resultsReleased) { %>
-                        <h2 class="display-4">--</h2>
-                        <p class="card-text">(Results Pending)</p>
-                    <% } else { %>
-                        <h2 class="display-4"><%= stats.examsFailed %></h2>
-                        <p class="card-text">
-                            <% if (stats.totalExams > 0) { %>
-                                (<%= ((stats.examsFailed / stats.totalExams) * 100).toFixed(1) %>%)
-                            <% } else { %>
-                                (0%)
-                            <% } %>
-                        </p>
-                    <% } %>
+                    <h2 class="display-4"><%= stats.examsFailed %></h2>
+                    <p class="card-text">
+                        <% if (stats.totalExams > 0) { %>
+                            (<%= ((stats.examsFailed / stats.totalExams) * 100).toFixed(1) %>%)
+                        <% } else { %>
+                            (0%)
+                        <% } %>
+                    </p>
                 </div>
             </div>
         </div>

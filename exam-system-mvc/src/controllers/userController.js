@@ -14,20 +14,24 @@ exports.getDashboard = async (req, res) => {
         totalExams: 0,
         averageScore: 0,
         examsPassed: 0,
-        examsFailed: 0
+        examsFailed: 0,
+        resultsReleased: false
       };
   
       if (user.role === 'student') {
-        // Get all results for this student
-        const results = await Result.find({ studentId: user._id })
-          .populate('examId');
+        // Get all results for this student that have been released
+        const results = await Result.find({ 
+          studentId: user._id,
+          isReleased: true  // Only get released results
+        }).populate('examId');
   
         // Get all submissions for this student
         const submissions = await Submission.find({ studentId: user._id })
           .populate('examId');
   
-        // Calculate statistics
+        // Calculate statistics only from released results
         stats.totalExams = results.length;
+        stats.resultsReleased = results.length > 0;
         
         if (stats.totalExams > 0) {
           // Calculate average score
@@ -59,7 +63,6 @@ exports.getDashboard = async (req, res) => {
         // Build a map for submissions keyed by "examId_attemptNumber"
         const submissionMap = {};
         submissions.forEach(sub => {
-          // Ensure examId is populated; if not, use sub.examId directly
           const examId = sub.examId && sub.examId._id ? sub.examId._id.toString() : sub.examId.toString();
           const key = `${examId}_${sub.attemptNumber}`;
           submissionMap[key] = sub;
@@ -73,8 +76,7 @@ exports.getDashboard = async (req, res) => {
           }
         });
   
-        // For each recent attempt, find its submission (matching exam and attemptNumber)
-        // and then attach the corresponding result if it exists.
+        // For each recent attempt, find its submission and result
         recentAttempts.forEach(attempt => {
           const examId = attempt.exam && attempt.exam._id ? attempt.exam._id.toString() : attempt.exam.toString();
           const key = `${examId}_${attempt.attemptNumber}`;
@@ -86,7 +88,6 @@ exports.getDashboard = async (req, res) => {
             }
           }
         });
-        // --- End attaching result ---
   
         res.render('dashboard', {
           title: 'Dashboard',
