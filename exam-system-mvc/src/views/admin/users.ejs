@@ -112,13 +112,19 @@
                                                 </td>
                                                 <td>
                                                     <div class="btn-group btn-group-sm">
-                                                        <button class="btn btn-warning toggle-status" data-user-id="<%= member._id %>" data-current-status="<%= member.isActive %>">
-                                                            <i class="fas fa-<%= member.isActive ? 'ban' : 'check' %>"></i>
-                                                            <%= member.isActive ? 'Deactivate' : 'Activate' %>
-                                                        </button>
-                                                        <button class="btn btn-danger delete-user" data-user-id="<%= member._id %>">
-                                                            <i class="fas fa-trash"></i> Delete
-                                                        </button>
+                                                        <% if (member.role !== 'admin') { %>
+                                                            <button class="btn btn-warning toggle-status" data-user-id="<%= member._id %>" data-current-status="<%= member.isActive %>">
+                                                                <i class="fas fa-<%= member.isActive ? 'ban' : 'check' %>"></i>
+                                                                <%= member.isActive ? 'Deactivate' : 'Activate' %>
+                                                            </button>
+                                                            <button class="btn btn-danger delete-user" data-user-id="<%= member._id %>">
+                                                                <i class="fas fa-trash"></i> Delete
+                                                            </button>
+                                                        <% } else { %>
+                                                            <span class="text-muted">
+                                                                <i class="fas fa-lock"></i> Admin actions disabled
+                                                            </span>
+                                                        <% } %>
                                                     </div>
                                                 </td>
                                             </tr>
