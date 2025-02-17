@@ -1,5 +1,5 @@
 <%# This component shows publish/unpublish buttons for exams %>
-<% if (user && (user.role === 'admin' || (user.role === 'teacher' && exam.createdBy._id.toString() === user._id.toString()))) { %>
+<% if ((user.role === 'admin' || user.role === 'teacher') && (exam.createdBy._id.toString() === user._id.toString() || user.role === 'admin')) { %>
     <div class="publish-controls" data-exam-id="<%= exam._id %>">
         <% if (exam.status === 'draft') { %>
             <button class="btn btn-success publish-exam" onclick="publishExam('<%= exam._id %>')">

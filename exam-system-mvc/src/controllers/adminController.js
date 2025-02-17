@@ -378,8 +378,9 @@ exports.getStudentProgress = async (req, res) => {
     try {
         const studentId = req.params.id;
 
-        // Get student details
-        const student = await User.findById(studentId);
+        // Get student details with department
+        const student = await User.findById(studentId)
+            .populate('departmentId', 'name');
 
         if (!student) {
             req.flash('error', 'Student not found');
@@ -388,26 +389,26 @@ exports.getStudentProgress = async (req, res) => {
 
         // Get exam history with details
         const examHistory = await Result.find({ studentId })
-            .populate('examId')
-            .sort({ submittedAt: -1 })
+            .populate('examId', 'title passingMarks')
+            .sort({ createdAt: -1 })
             .lean();
 
         // Calculate statistics
         const stats = {
             totalExams: examHistory.length,
             averageScore: examHistory.length > 0 ? 
-                examHistory.reduce((sum, result) => sum + result.score, 0) / examHistory.length : 
-                null,
-            passedExams: examHistory.filter(result => result.score >= result.examId.passingScore).length,
-            failedExams: examHistory.filter(result => result.score < result.examId.passingScore).length
+                examHistory.reduce((sum, result) => sum + result.percentage, 0) / examHistory.length : 
+                0,
+            passedExams: examHistory.filter(result => result.status === 'PASS').length,
+            failedExams: examHistory.filter(result => result.status === 'FAIL').length
         };
 
         // Prepare performance data for chart
         const performanceData = examHistory
-            .sort((a, b) => new Date(a.submittedAt) - new Date(b.submittedAt))
+            .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
             .map(result => ({
-                date: result.submittedAt,
-                score: result.score
+                date: result.createdAt,
+                score: result.percentage
             }));
 
         res.render('admin/student-progress', {

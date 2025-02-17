@@ -1,5 +1,5 @@
 <%# This component handles exam deletion button %>
-<% if (user.role === 'teacher' && (exam.createdBy._id.toString() === user._id.toString() || user.role === 'admin')) { %>
+<% if ((user.role === 'teacher' || user.role === 'admin') && (exam.createdBy._id.toString() === user._id.toString() || user.role === 'admin')) { %>
     <form action="/exams/<%= exam._id %>" 
           method="POST" 
           class="d-inline"

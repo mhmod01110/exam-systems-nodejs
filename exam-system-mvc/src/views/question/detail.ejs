@@ -10,7 +10,7 @@
                     </p>
                 </div>
                 <div class="d-flex gap-2">
-                    <% if (user.role === 'teacher' && 
+                    <% if ((user.role === 'teacher' || user.role === 'admin') && 
                           (question.createdBy._id.toString() === user._id.toString() || 
                            user.role === 'admin')) { %>
                         <a href="/exams/<%= question.examId._id %>/questions/<%= question._id %>/edit" 

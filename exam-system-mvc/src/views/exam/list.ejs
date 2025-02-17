@@ -19,8 +19,8 @@
                         <option value="">All Departments</option>
                         <% if (typeof departments !== 'undefined') { %>
                             <% departments.forEach(dept => { %>
-                                <option value="<%= dept %>" <%= query.department === dept ? 'selected' : '' %>>
-                                    <%= dept %>
+                                <option value="<%= dept._id %>" <%= query.department === dept._id.toString() ? 'selected' : '' %>>
+                                    <%= dept.name %>
                                 </option>
                             <% }); %>
                         <% } %>
@@ -82,7 +82,7 @@
 
                             <div class="mb-3">
                                 <small class="text-muted">
-                                    <i class="fas fa-building"></i> <%= exam.department %><br>
+                                    <i class="fas fa-building"></i> <%= exam.department ? exam.department.name : 'No Department' %><br>
                                     <i class="fas fa-clock"></i> Duration: <%= exam.duration %> minutes<br>
                                     <i class="fas fa-calendar"></i> Start: <%= new Date(exam.startDate).toLocaleString() %><br>
                                     <i class="fas fa-star"></i> Total Marks: <%= exam.totalMarks %>

@@ -35,6 +35,9 @@ exports.getExams = async (req, res) => {
             ];
         }
         
+        // Fetch active departments for the filter
+        const departments = await Department.find({ isActive: true }).sort('name');
+        
         const exams = await Exam.find(query)
             .populate('createdBy', 'username firstName lastName')
             .populate('department', 'name')
@@ -43,6 +46,7 @@ exports.getExams = async (req, res) => {
         res.render('exam/list', {
             title: 'Exams',
             exams,
+            departments,
             user: req.user,
             query: req.query
         });
@@ -86,6 +90,19 @@ exports.postCreateExam = async (req, res) => {
             return res.redirect('/exams');
         }
 
+        // Validate department
+        if (!req.body.department) {
+            req.flash('error', 'Department is required');
+            return res.redirect('/exams/create');
+        }
+
+        // Check if department exists and is active
+        const department = await Department.findOne({ _id: req.body.department, isActive: true });
+        if (!department) {
+            req.flash('error', 'Invalid or inactive department selected');
+            return res.redirect('/exams/create');
+        }
+
         // Convert checkbox values to boolean
         const formData = {
             ...req.body,
@@ -103,6 +120,12 @@ exports.postCreateExam = async (req, res) => {
 
         // Create exam
         const exam = await Exam.create(formData);
+
+        // Update department's exams array
+        await Department.findByIdAndUpdate(
+            department._id,
+            { $push: { exams: exam._id } }
+        );
         
         req.flash('success', 'Exam created successfully');
         res.redirect(`/exams/${exam._id}`);
@@ -597,7 +620,7 @@ exports.submitExamAttempt = async (req, res) => {
             timeTaken: answer.timeTaken
           })),
           analytics: {
-            timeSpent: Math.floor((now - attempt.startTime) / 1000),
+            timeSpent: submission.timeSpent,
             attemptsCount: attempt.attemptNumber,
             correctAnswers: [...mcqAnswers, ...tfAnswers].filter(a => a.isCorrect).length,
             incorrectAnswers: [...mcqAnswers, ...tfAnswers].filter(a => !a.isCorrect).length,

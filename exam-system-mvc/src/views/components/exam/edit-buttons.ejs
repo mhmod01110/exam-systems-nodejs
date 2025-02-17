@@ -1,5 +1,5 @@
 <%# This component handles exam editing buttons %>
-<% if (user.role === 'teacher' && (exam.createdBy._id.toString() === user._id.toString() || user.role === 'admin')) { %>
+<% if ((user.role === 'teacher' || user.role === 'admin') && (exam.createdBy._id.toString() === user._id.toString() || user.role === 'admin')) { %>
     <div class="btn-group">
         <a href="/exams/<%= exam._id %>/edit" class="btn btn-warning">
             <i class="fas fa-edit"></i> Edit Settings

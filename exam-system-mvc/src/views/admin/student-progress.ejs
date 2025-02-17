@@ -100,23 +100,23 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <% examHistory.forEach(attempt => { %>
+                                <% examHistory.forEach(result => { %>
                                     <tr>
-                                        <td><%= attempt.exam.title %></td>
-                                        <td><%= new Date(attempt.submittedAt).toLocaleDateString() %></td>
+                                        <td><%= result.examId.title %></td>
+                                        <td><%= new Date(result.createdAt).toLocaleDateString() %></td>
                                         <td>
-                                            <span class="badge bg-<%= attempt.score >= attempt.exam.passingScore ? 'success' : 'danger' %>">
-                                                <%= attempt.score %>%
+                                            <span class="badge bg-<%= result.status === 'PASS' ? 'success' : 'danger' %>">
+                                                <%= result.percentage.toFixed(1) %>%
                                             </span>
                                         </td>
-                                        <td><%= attempt.timeTaken %> minutes</td>
+                                        <td><%= Math.floor(result.analytics?.timeSpent / 60) || 0 %> minutes</td>
                                         <td>
-                                            <span class="badge bg-<%= attempt.score >= attempt.exam.passingScore ? 'success' : 'danger' %>">
-                                                <%= attempt.score >= attempt.exam.passingScore ? 'Passed' : 'Failed' %>
+                                            <span class="badge bg-<%= result.status === 'PASS' ? 'success' : 'danger' %>">
+                                                <%= result.status %>
                                             </span>
                                         </td>
                                         <td>
-                                            <a href="/exams/<%= attempt.exam._id %>/results/<%= attempt._id %>" class="btn btn-sm btn-info">
+                                            <a href="/exams/<%= result.examId._id %>/results/<%= result._id %>" class="btn btn-sm btn-info">
                                                 <i class="fas fa-eye"></i> View Details
                                             </a>
                                         </td>
