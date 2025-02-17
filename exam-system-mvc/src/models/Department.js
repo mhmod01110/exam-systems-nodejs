@@ -11,6 +11,18 @@ const departmentSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
+    exams: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Exam'
+    }],
+    materials: [{
+        title: String,
+        url: {
+            type: String,
+            required: true
+        },
+        description: String
+    }],
     isActive: {
         type: Boolean,
         default: true

@@ -60,13 +60,14 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="department" class="form-label">Department</label>
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="department" 
-                                   name="department" 
-                                   required>
+                            <select class="form-select" id="department" name="department" required>
+                                <option value="">Select Department</option>
+                                <% departments.forEach(department => { %>
+                                    <option value="<%= department._id %>"><%= department.name %></option>
+                                <% }); %>
+                            </select>
                             <div class="invalid-feedback">
-                                Please specify a department.
+                                Please select a department.
                             </div>
                         </div>
                         <div class="col-md-6 mb-3">

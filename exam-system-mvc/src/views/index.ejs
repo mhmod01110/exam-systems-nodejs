@@ -99,6 +99,68 @@
                             </div>
                         </div>
                     </div>
+
+            <!-- Departments Section -->
+            <div class="col-md-12 mt-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Departments</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <% departments.forEach(department => { %>
+                                <div class="col-md-4 mb-4">
+                                    <div class="card h-100">
+                                        <div class="card-header">
+                                            <h6 class="card-title mb-0"><%= department.name %></h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <!-- Exams -->
+                                            <h6 class="mb-3">Exams</h6>
+                                            <% if (department.exams && department.exams.length > 0) { %>
+                                                <div class="list-group mb-3">
+                                                    <% department.exams.slice(0, 3).forEach(exam => { %>
+                                                        <a href="/exams/<%= exam._id %>" class="list-group-item list-group-item-action">
+                                                            <%= exam.title %>
+                                                        </a>
+                                                    <% }); %>
+                                                    <% if (department.exams.length > 3) { %>
+                                                        <a href="/departments/<%= department._id %>/exams" class="list-group-item list-group-item-action text-primary">
+                                                            View all exams...
+                                                        </a>
+                                                    <% } %>
+                                                </div>
+                                            <% } else { %>
+                                                <p class="text-muted small">No exams available</p>
+                                            <% } %>
+
+                                            <!-- Materials -->
+                                            <h6 class="mb-3">Study Materials</h6>
+                                            <% if (department.materials && department.materials.length > 0) { %>
+                                                <div class="list-group">
+                                                    <% department.materials.slice(0, 3).forEach(material => { %>
+                                                        <a href="<%= material.url %>" target="_blank" class="list-group-item list-group-item-action">
+                                                            <%= material.title %>
+                                                        </a>
+                                                    <% }); %>
+                                                    <% if (department.materials.length > 3) { %>
+                                                        <a href="/departments/<%= department._id %>/materials" class="list-group-item list-group-item-action text-primary">
+                                                            View all materials...
+                                                        </a>
+                                                    <% } %>
+                                                </div>
+                                            <% } else { %>
+                                                <p class="text-muted small">No materials available</p>
+                                            <% } %>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% }); %>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     <% } else { %>
         <!-- Teacher/Admin Dashboard -->
         <div class="row">
@@ -191,6 +253,67 @@
                                 </li>
                             <% } %>
                         </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Departments Section -->
+            <div class="col-md-12 mt-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Departments</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <% departments.forEach(department => { %>
+                                <div class="col-md-4 mb-4">
+                                    <div class="card h-100">
+                                        <div class="card-header">
+                                            <h6 class="card-title mb-0"><%= department.name %></h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <!-- Exams -->
+                                            <h6 class="mb-3">Exams</h6>
+                                            <% if (department.exams && department.exams.length > 0) { %>
+                                                <div class="list-group mb-3">
+                                                    <% department.exams.slice(0, 3).forEach(exam => { %>
+                                                        <a href="/exams/<%= exam._id %>" class="list-group-item list-group-item-action">
+                                                            <%= exam.title %>
+                                                        </a>
+                                                    <% }); %>
+                                                    <% if (department.exams.length > 3) { %>
+                                                        <a href="/departments/<%= department._id %>/exams" class="list-group-item list-group-item-action text-primary">
+                                                            View all exams...
+                                                        </a>
+                                                    <% } %>
+                                                </div>
+                                            <% } else { %>
+                                                <p class="text-muted small">No exams available</p>
+                                            <% } %>
+
+                                            <!-- Materials -->
+                                            <h6 class="mb-3">Study Materials</h6>
+                                            <% if (department.materials && department.materials.length > 0) { %>
+                                                <div class="list-group">
+                                                    <% department.materials.slice(0, 3).forEach(material => { %>
+                                                        <a href="<%= material.url %>" target="_blank" class="list-group-item list-group-item-action">
+                                                            <%= material.title %>
+                                                        </a>
+                                                    <% }); %>
+                                                    <% if (department.materials.length > 3) { %>
+                                                        <a href="/departments/<%= department._id %>/materials" class="list-group-item list-group-item-action text-primary">
+                                                            View all materials...
+                                                        </a>
+                                                    <% } %>
+                                                </div>
+                                            <% } else { %>
+                                                <p class="text-muted small">No materials available</p>
+                                            <% } %>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% }); %>
+                        </div>
                     </div>
                 </div>
             </div>

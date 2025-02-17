@@ -3,6 +3,7 @@ const Question = require('../models/Question');
 const ExamAttempt = require('../models/ExamAttempt');
 const Submission = require('../models/Submission');
 const Result = require('../models/Result');
+const Department = require('../models/Department');
 const AppError = require('../utils/AppError');
 
 // Display list of all exams
@@ -61,9 +62,13 @@ exports.getCreateExam = async (req, res) => {
             return res.redirect('/exams');
         }
         
+        // Fetch active departments
+        const departments = await Department.find({ isActive: true }).sort('name');
+        
         res.render('exam/create', {
             title: 'Create Exam',
-            user: req.user
+            user: req.user,
+            departments
         });
     } catch (error) {
         console.error('Error in getCreateExam:', error);

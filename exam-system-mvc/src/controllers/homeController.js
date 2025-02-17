@@ -3,14 +3,26 @@ const Result = require('../models/Result');
 const User = require('../models/User');
 const Question = require('../models/Question');
 const Submission = require('../models/Submission');
+const Department = require('../models/Department');
 
 exports.getHome = async (req, res) => {
     try {
+        // Get active departments with populated exams
+        const departments = await Department.find({ isActive: true })
+            .populate({
+                path: 'exams',
+                match: { status: 'PUBLISHED' },
+                select: 'title startDate endDate',
+                options: { limit: 3 }
+            })
+            .sort('name');
+
         // If user is not logged in, render the guest view
         if (!req.session.user) {
             return res.render('index', {
                 title: 'Welcome to Online Exam System',
-                user: null
+                user: null,
+                departments
             });
         }
 
@@ -39,9 +51,10 @@ exports.getHome = async (req, res) => {
         
             return res.render('index', {
                 title: 'Student Dashboard',
-                user: req.session.user, // <-- Updated here
+                user: req.session.user,
                 upcomingExams,
-                recentResults: formattedResults
+                recentResults: formattedResults,
+                departments
             });
         }
         
@@ -87,7 +100,8 @@ exports.getHome = async (req, res) => {
             title: `${req.session.user.role === 'admin' ? 'Admin' : 'Teacher'} Dashboard`,
             user: req.session.user,
             recentExams,
-            ...stats // Spread the stats object to pass all statistics
+            departments,
+            ...stats
         });
 
     } catch (error) {

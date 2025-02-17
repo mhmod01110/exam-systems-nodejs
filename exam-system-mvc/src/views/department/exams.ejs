@@ -1,0 +1,45 @@
+<%- contentFor('body') %>
+
+<div class="container">
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0"><%= department.name %> - Exams</h3>
+                <a href="/" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Home
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <% if (department.exams && department.exams.length > 0) { %>
+                <div class="row">
+                    <% department.exams.forEach(exam => { %>
+                        <div class="col-md-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0"><%= exam.title %></h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text">
+                                        <strong>Start Date:</strong> <%= new Date(exam.startDate).toLocaleDateString() %><br>
+                                        <strong>End Date:</strong> <%= new Date(exam.endDate).toLocaleDateString() %><br>
+                                        <% if (exam.createdBy) { %>
+                                            <strong>Created By:</strong> <%= exam.createdBy.firstName %> <%= exam.createdBy.lastName %>
+                                        <% } %>
+                                    </p>
+                                    <a href="/exams/<%= exam._id %>" class="btn btn-primary">
+                                        View Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+            <% } else { %>
+                <div class="alert alert-info">
+                    No exams available for this department.
+                </div>
+            <% } %>
+        </div>
+    </div>
+</div> 

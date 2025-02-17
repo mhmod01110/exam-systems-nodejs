@@ -47,9 +47,9 @@ const examSchema = new mongoose.Schema({
         required: [true, "Creator is required"]
     },
     department: {
-        type: String,
-        required: [true, "Department is required"],
-        trim: true
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Department',
+        required: [true, "Department is required"]
     },
     status: {
         type: String,

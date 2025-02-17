@@ -111,14 +111,17 @@ const examRoutes = require('./src/routes/examRoutes');
 const questionRoutes = require('./src/routes/questionRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
+const departmentRoutes = require('./src/routes/departmentRoutes');
+const errorHandler = require('./src/middleware/errorHandler');
+
 
 app.use('/', authRoutes);
 app.use('/', userRoutes);
 app.use('/exams', examRoutes);
 app.use('/questions', questionRoutes);
 app.use('/', adminRoutes);
+app.use('/departments', departmentRoutes);
 
-const errorHandler = require('./src/middleware/errorHandler');
 
 // Error handling middleware
 app.use(errorHandler);
