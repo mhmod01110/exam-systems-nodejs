@@ -20,6 +20,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "arabic-persian-reshaper": "^1.0.1",
+    "arabic-reshaper": "^1.1.0",
     "bcryptjs": "^2.4.3",
     "connect-flash": "^0.1.1",
     "connect-mongo": "^4.6.0",
