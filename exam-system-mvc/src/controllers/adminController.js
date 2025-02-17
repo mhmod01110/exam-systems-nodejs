@@ -3,6 +3,8 @@ const Exam = require('../models/Exam');
 const Result = require('../models/Result');
 const Department = require('../models/Department');
 const AppError = require('../utils/AppError');
+const { generateStudentResultsPDF } = require('../utils/pdfExporter');
+const { generateStudentResultsExcel } = require('../utils/excelExporter');
 
 // Admin Dashboard
 exports.getDashboard = async (req, res, next) => {
@@ -473,7 +475,46 @@ exports.postToggleUserStatus = async (req, res, next) => {
 // Export student progress as PDF
 exports.getExportPDF = async (req, res, next) => {
     try {
-        throw new AppError('PDF export not implemented yet', 501);
+        const studentId = req.params.id;
+        
+        // Get student results with populated exam details
+        const results = await Result.find({ studentId })
+            .populate('examId', 'title type duration')
+            .populate('studentId', 'firstName lastName email')
+            .sort({ createdAt: -1 });
+
+        if (!results || results.length === 0) {
+            throw new AppError('No results found for this student', 404);
+        }
+
+        // Prepare data for PDF generation
+        const student = results[0].studentId;
+        const totalExams = results.length;
+        const averagePercentage = results.reduce((sum, r) => sum + r.percentage, 0) / totalExams;
+        const passedExams = results.filter(r => r.status === 'PASS').length;
+
+        const data = {
+            student,
+            results,
+            summary: {
+                totalExams,
+                averagePercentage,
+                passedExams
+            }
+        };
+
+        // Generate PDF
+        const doc = generateStudentResultsPDF(data);
+        
+        // Set response headers
+        const filename = `student_results_${studentId}_${Date.now()}.pdf`;
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        
+        // Pipe to response
+        doc.pipe(res);
+        doc.end();
+
     } catch (error) {
         next(error);
     }
@@ -482,7 +523,46 @@ exports.getExportPDF = async (req, res, next) => {
 // Export student progress as Excel
 exports.getExportExcel = async (req, res, next) => {
     try {
-        throw new AppError('Excel export not implemented yet', 501);
+        const studentId = req.params.id;
+        
+        // Get student results with populated exam details
+        const results = await Result.find({ studentId })
+            .populate('examId', 'title type duration')
+            .populate('studentId', 'firstName lastName email')
+            .sort({ createdAt: -1 });
+
+        if (!results || results.length === 0) {
+            throw new AppError('No results found for this student', 404);
+        }
+
+        // Prepare data for Excel generation
+        const student = results[0].studentId;
+        const totalExams = results.length;
+        const averagePercentage = results.reduce((sum, r) => sum + r.percentage, 0) / totalExams;
+        const passedExams = results.filter(r => r.status === 'PASS').length;
+
+        const data = {
+            student,
+            results,
+            summary: {
+                totalExams,
+                averagePercentage,
+                passedExams
+            }
+        };
+
+        // Generate Excel workbook
+        const workbook = await generateStudentResultsExcel(data);
+        
+        // Set response headers
+        const filename = `student_results_${studentId}_${Date.now()}.xlsx`;
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+        // Write to response
+        await workbook.xlsx.write(res);
+        res.end();
+
     } catch (error) {
         next(error);
     }
