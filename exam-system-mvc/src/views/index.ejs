@@ -115,6 +115,20 @@
                                             <h6 class="card-title mb-0"><%= department.name %></h6>
                                         </div>
                                         <div class="card-body">
+                                            <!-- Action Buttons -->
+                                            <div class="mb-3">
+                                                <a href="/departments/<%= department._id %>/exams" class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-book"></i> Exams
+                                                </a>
+                                                <a href="/departments/<%= department._id %>/materials" class="btn btn-sm btn-info">
+                                                    <i class="fas fa-file-alt"></i> Materials
+                                                </a>
+                                                <% if (user.role === 'admin') { %>
+                                                    <a href="/departments/<%= department._id %>/edit" class="btn btn-sm btn-warning">
+                                                        <i class="fas fa-edit"></i> Edit
+                                                    </a>
+                                                <% } %>
+                                            </div>
                                             <!-- Exams -->
                                             <h6 class="mb-3">Exams</h6>
                                             <% if (department.exams && department.exams.length > 0) { %>
@@ -174,9 +188,8 @@
                         <div class="d-grid gap-2">
                             <a href="/exams/create" class="btn btn-primary">Create New Exam</a>
                             <a href="/exams" class="btn btn-outline-primary">Manage Exams</a>
-                            <% if (user.role === 'admin') { %>
-                                <a href="/admin/users" class="btn btn-outline-primary">Manage Users</a>
-                            <% } %>
+                            <a href="/admin/users" class="btn btn-outline-primary">Manage Users</a>
+                            <a href="/departments/create" class="btn btn-outline-primary">Create Department</a>
                         </div>
                     </div>
                 </div>
@@ -272,6 +285,19 @@
                                             <h6 class="card-title mb-0"><%= department.name %></h6>
                                         </div>
                                         <div class="card-body">
+                                            <!-- Action Buttons -->
+                                            <div class="mb-3">
+                                                <a href="/departments/<%= department._id %>/exams" class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-book"></i> Exams
+                                                </a>
+                                                <a href="/departments/<%= department._id %>/materials" class="btn btn-sm btn-info">
+                                                    <i class="fas fa-file-alt"></i> Materials
+                                                </a>
+                                                <a href="/departments/<%= department._id %>/edit" class="btn btn-sm btn-warning">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </a>
+                                            
+                                            </div>
                                             <!-- Exams -->
                                             <h6 class="mb-3">Exams</h6>
                                             <% if (department.exams && department.exams.length > 0) { %>

@@ -64,7 +64,7 @@ exports.postLogin = async (req, res, next) => {
             
             // Redirect based on role
             if (user.role === 'admin') {
-                res.redirect('/dashboard');
+                res.redirect('/');
             } else if (user.role === 'teacher') {
                 res.redirect('/exams');
             } else {
