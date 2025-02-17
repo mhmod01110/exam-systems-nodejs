@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Question = require('../models/Question');
 const Exam = require('../models/Exam');
 const ExamAttempt = require('../models/ExamAttempt');
@@ -444,34 +445,123 @@ exports.postEditQuestion = async (req, res, next) => {
 // Handle question deletion
 exports.deleteQuestion = async (req, res) => {
     try {
-        const question = await Question.findById(req.params.id);
-        
+        const { examId, id } = req.params;
+
+        // Find the exam first
+        const exam = await Exam.findById(examId);
+        if (!exam) {
+            return res.status(404).json({
+                success: false,
+                message: 'Exam not found'
+            });
+        }
+
+        // Find the question
+        const question = await Question.findById(id);
         if (!question) {
-            req.flash('error', 'Question not found');
-            return res.redirect(`/exams/${req.params.examId}/questions`);
+            return res.status(404).json({
+                success: false,
+                message: 'Question not found'
+            });
         }
-        
-        // Check if user is authorized to delete
+
+        // Check authorization
         if (question.createdBy.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-            req.flash('error', 'Not authorized to delete this question');
-            return res.redirect(`/exams/${req.params.examId}/questions`);
+            return res.status(403).json({
+                success: false,
+                message: 'Not authorized to delete this question'
+            });
         }
-        
-        // Remove question from exam
-        const exam = await Exam.findById(question.examId);
-        if (exam) {
-            exam.questions = exam.questions.filter(q => q.toString() !== question._id.toString());
+
+        try {
+            // 1. Remove question from exam's questions array
+            exam.questions = exam.questions.filter(q => q.toString() !== id);
             await exam.save();
+
+            // 2. Clean up ExamAttempts
+            await ExamAttempt.updateMany(
+                { 'questions.question': id },
+                { 
+                    $pull: { questions: { question: id } },
+                    $inc: { totalMarks: -question.marks } // Decrease total marks
+                }
+            );
+
+            // 3. Clean up Submissions
+            const submissions = await Submission.find({
+                examId: examId,
+                $or: [
+                    { 'answers.questionId': id },
+                    { 'tfAnswers.questionId': id }
+                ]
+            });
+
+            for (const submission of submissions) {
+                // Remove the question's answer and update total marks
+                const answer = submission.answers.find(a => a.questionId.toString() === id);
+                if (answer) {
+                    submission.totalMarksObtained -= (answer.marksObtained || 0);
+                    submission.answers = submission.answers.filter(a => a.questionId.toString() !== id);
+                }
+                
+                // Also check tfAnswers if exists
+                if (submission.tfAnswers) {
+                    const tfAnswer = submission.tfAnswers.find(a => a.questionId.toString() === id);
+                    if (tfAnswer) {
+                        submission.totalMarksObtained -= (tfAnswer.marksObtained || 0);
+                        submission.tfAnswers = submission.tfAnswers.filter(a => a.questionId.toString() !== id);
+                    }
+                }
+
+                await submission.save();
+            }
+
+            // 4. Clean up Results
+            const results = await Result.find({
+                examId: examId,
+                'questionResults.questionId': id
+            });
+
+            for (const result of results) {
+                // Remove the question result and update totals
+                const questionResult = result.questionResults.find(qr => qr.questionId.toString() === id);
+                if (questionResult) {
+                    result.totalMarks -= question.marks;
+                    result.obtainedMarks -= (questionResult.obtainedMarks || 0);
+                    result.questionResults = result.questionResults.filter(qr => qr.questionId.toString() !== id);
+                    
+                    // Recalculate percentage and status
+                    if (result.totalMarks > 0) {
+                        result.percentage = (result.obtainedMarks / result.totalMarks) * 100;
+                        result.status = result.percentage >= 50 ? 'PASS' : 'FAIL';
+                    }
+                }
+                await result.save();
+            }
+
+            // 5. Finally delete the question
+            await Question.findByIdAndDelete(id);
+
+            return res.json({
+                success: true,
+                message: 'Question and all related data deleted successfully'
+            });
+        } catch (error) {
+            // If there's an error, try to restore the exam's questions array
+            try {
+                exam.questions.push(id);
+                await exam.save();
+            } catch (restoreError) {
+                console.error('Error restoring exam questions:', restoreError);
+            }
+            throw error;
         }
-        
-        await question.remove();
-        
-        req.flash('success', 'Question deleted successfully');
-        res.redirect(`/exams/${req.params.examId}/questions`);
     } catch (error) {
         console.error('Error in deleteQuestion:', error);
-        req.flash('error', 'Error deleting question');
-        res.redirect(`/exams/${req.params.examId}/questions`);
+        return res.status(500).json({
+            success: false,
+            message: 'Error deleting question and related data'
+        });
     }
 };
 

@@ -10,7 +10,7 @@ router.post('/create', isAuth, isTeacher, questionController.postCreateQuestion)
 router.get('/:id', isAuth, isTeacher, questionController.getQuestion);
 router.get('/:id/edit', isAuth, isTeacher, questionController.getEditQuestion);
 router.post('/:id/edit', isAuth, isTeacher, questionController.postEditQuestion);
-router.delete('/:id', isAuth, isTeacher, questionController.deleteQuestion);
+router.delete('/:examId/questions/:id', isAuth, isTeacher, questionController.deleteQuestion);
 router.post('/:id/upload-image', isAuth, isTeacher, questionController.postUploadImage);
 
 module.exports = router; 
