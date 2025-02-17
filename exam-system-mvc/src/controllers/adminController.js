@@ -377,9 +377,7 @@ exports.getStudentProgress = async (req, res) => {
         const studentId = req.params.id;
 
         // Get student details
-        const student = await User.findById(studentId)
-            .populate('department')
-            .lean();
+        const student = await User.findById(studentId);
 
         if (!student) {
             req.flash('error', 'Student not found');
