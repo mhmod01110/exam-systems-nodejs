@@ -46,4 +46,7 @@ router.post('/:id/release-results', isAuth, isTeacher, examController.releaseRes
 // Submission review route (for teachers)
 router.get('/:examId/submissions/:submissionId', isAuth, isTeacher, examController.getSubmissionDetails);
 
+// Delete exam route (protected for teachers and admins)
+router.delete('/:id', isAuth, isTeacher, examController.deleteExam);
+
 module.exports = router; 

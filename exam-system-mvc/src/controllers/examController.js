@@ -268,7 +268,8 @@ exports.postEditExam = async (req, res) => {
 // Handle exam deletion
 exports.deleteExam = async (req, res) => {
     try {
-        const exam = await Exam.findById(req.params.id);
+        const exam = await Exam.findById(req.params.id)
+            .populate('department', '_id');
         
         if (!exam) {
             req.flash('error', 'Exam not found');
@@ -280,20 +281,55 @@ exports.deleteExam = async (req, res) => {
             req.flash('error', 'Not authorized to delete this exam');
             return res.redirect('/exams');
         }
+
+        // Start cleanup process
+        // 1. Delete all results associated with this exam
+        await Result.deleteMany({ examId: exam._id });
         
-        // Delete all questions associated with this exam
-        await Question.deleteMany({ examId: exam._id });
+        // 2. Delete all submissions associated with this exam
+        await Submission.deleteMany({ examId: exam._id });
         
-        // Delete all attempts associated with this exam
+        // 3. Delete all attempts associated with this exam
         await ExamAttempt.deleteMany({ exam: exam._id });
         
-        // Delete the exam
-        await exam.remove();
+        // 4. Delete all questions associated with this exam
+        await Question.deleteMany({ examId: exam._id });
+
+        // 5. Remove exam reference from department
+        if (exam.department) {
+            await Department.findByIdAndUpdate(
+                exam.department._id,
+                { $pull: { exams: exam._id } }
+            );
+        }
         
-        req.flash('success', 'Exam deleted successfully');
+        // 6. Finally, delete the exam
+        await exam.deleteOne();
+        
+        req.flash('success', 'Exam and all associated data deleted successfully');
+        
+        // If it's an AJAX request, send JSON response
+        if (req.xhr || req.headers.accept.includes('application/json')) {
+            return res.json({ 
+                success: true, 
+                message: 'Exam deleted successfully',
+                redirect: '/exams'
+            });
+        }
+
+        // For regular form submissions, redirect
         res.redirect('/exams');
     } catch (error) {
         console.error('Error in deleteExam:', error);
+        
+        // If it's an AJAX request, send JSON error
+        if (req.xhr || req.headers.accept.includes('application/json')) {
+            return res.status(500).json({ 
+                success: false, 
+                error: 'Error deleting exam'
+            });
+        }
+
         req.flash('error', 'Error deleting exam');
         res.redirect('/exams');
     }
