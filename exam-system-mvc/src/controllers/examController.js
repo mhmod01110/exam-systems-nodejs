@@ -693,11 +693,29 @@ exports.getExamResultDetails = async (req, res) => {
             return res.redirect('/exams');
         }
 
-        // Security check - only allow the student who took the exam or admin/teacher to view
+        // Security check - only allow viewing if:
+        // 1. The student who took the exam
+        // 2. Admin
+        // 3. Teacher who created the exam
+        // 4. Results have been released
         if (result.studentId._id.toString() !== req.user._id.toString() && 
             req.user.role !== 'admin' && 
             result.examId.createdBy.toString() !== req.user._id.toString()) {
+            
+            if (!result.isReleased) {
+                req.flash('error', 'Results have not been released yet');
+                return res.redirect('/exams');
+            }
+
             req.flash('error', 'Not authorized to view these results');
+            return res.redirect('/exams');
+        }
+
+        // If student is viewing and results are not released yet
+        if (result.studentId._id.toString() === req.user._id.toString() && 
+            !result.isReleased && 
+            req.user.role === 'student') {
+            req.flash('error', 'Results have not been released yet');
             return res.redirect('/exams');
         }
 
@@ -843,5 +861,44 @@ exports.getSubmissionDetails = async (req, res) => {
         console.error('Error in getSubmissionDetails:', error);
         req.flash('error', 'Error fetching submission details');
         res.redirect('/dashboard');
+    }
+}; 
+
+// Release exam results
+exports.releaseResults = async (req, res) => {
+    try {
+        const exam = await Exam.findById(req.params.id);
+        
+        if (!exam) {
+            return res.status(404).json({
+                success: false,
+                message: 'Exam not found'
+            });
+        }
+        
+        // Check if user is authorized to release results
+        if (exam.createdBy.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Not authorized to release results for this exam'
+            });
+        }
+
+        // Update all results for this exam to be released
+        await Result.updateMany(
+            { examId: exam._id },
+            { isReleased: true }
+        );
+        
+        return res.json({
+            success: true,
+            message: 'Results released successfully'
+        });
+    } catch (error) {
+        console.error('Error in releaseResults:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error releasing results'
+        });
     }
 }; 

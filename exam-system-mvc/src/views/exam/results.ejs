@@ -78,48 +78,66 @@
                                     </td>
                                     <td><%= new Date(result.createdAt).toLocaleDateString() %></td>
                                     <td>
-                                        <div class="progress" style="height: 20px;">
-                                            <div class="progress-bar bg-<%= 
-                                                result.percentage >= 80 ? 'success' :
-                                                result.percentage >= 60 ? 'info' :
-                                                'danger' %>"
-                                                role="progressbar"
-                                                style="width: <%= result.percentage %>%"
-                                                aria-valuenow="<%= result.percentage %>"
-                                                aria-valuemin="0"
-                                                aria-valuemax="100">
-                                                <%= result.percentage.toFixed(1) %>%
+                                        <% if (result.isReleased) { %>
+                                            <div class="progress" style="height: 20px;">
+                                                <div class="progress-bar bg-<%= 
+                                                    result.percentage >= 80 ? 'success' :
+                                                    result.percentage >= 60 ? 'info' :
+                                                    'danger' %>"
+                                                    role="progressbar"
+
+                                                    aria-valuenow="<%= result.percentage %>"
+                                                    aria-valuemin="0"
+                                                    aria-valuemax="100">
+                                                    <%= result.percentage.toFixed(1) %>%
+                                                </div>
                                             </div>
-                                        </div>
+                                        <% } else { %>
+                                            <span class="text-muted">Results not released yet</span>
+                                        <% } %>
                                     </td>
                                     <td>
-                                        <span class="badge bg-<%= 
-                                            result.grade === 'A+' || result.grade === 'A' ? 'success' :
-                                            result.grade === 'B+' || result.grade === 'B' ? 'primary' :
-                                            result.grade === 'C+' || result.grade === 'C' ? 'info' :
-                                            result.grade === 'D' ? 'warning' : 'danger' %>">
-                                            <%= result.grade %>
-                                        </span>
+                                        <% if (result.isReleased) { %>
+                                            <span class="badge bg-<%= 
+                                                result.grade === 'A+' || result.grade === 'A' ? 'success' :
+                                                result.grade === 'B+' || result.grade === 'B' ? 'primary' :
+                                                result.grade === 'C+' || result.grade === 'C' ? 'info' :
+                                                result.grade === 'D' ? 'warning' : 'danger' %>">
+                                                <%= result.grade %>
+                                            </span>
+                                        <% } else { %>
+                                            <span class="text-muted">-</span>
+                                        <% } %>
                                     </td>
                                     <td>
-                                        <span class="badge bg-<%= result.status === 'PASS' ? 'success' : 'danger' %>">
-                                            <%= result.status %>
-                                        </span>
+                                        <% if (result.isReleased) { %>
+                                            <span class="badge bg-<%= result.status === 'PASS' ? 'success' : 'danger' %>">
+                                                <%= result.status %>
+                                            </span>
+                                        <% } else { %>
+                                            <span class="badge bg-secondary">Pending</span>
+                                        <% } %>
                                     </td>
                                     <td>
                                         <div class="btn-group">
-                                            <a href="/exams/<%= result.examId._id %>/results/<%= result._id %>" 
-                                               class="btn btn-sm btn-info">
-                                                <i class="fas fa-eye"></i> View
-                                            </a>
-                                            <% if (!result.flags.appealRequested) { %>
-                                                <!-- <button type="button"
-                                                        class="btn btn-sm btn-warning"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#appealModal"
-                                                        data-result-id="<%= result._id %>">
-                                                    <i class="fas fa-gavel"></i> Appeal
-                                                </button> -->
+                                            <% if (result.isReleased) { %>
+                                                <a href="/exams/<%= result.examId._id %>/results/<%= result._id %>" 
+                                                   class="btn btn-sm btn-info">
+                                                    <i class="fas fa-eye"></i> View
+                                                </a>
+                                                <% if (!result.flags.appealRequested) { %>
+                                                    <!-- <button type="button"
+                                                            class="btn btn-sm btn-warning"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#appealModal"
+                                                            data-result-id="<%= result._id %>">
+                                                        <i class="fas fa-gavel"></i> Appeal
+                                                    </button> -->
+                                                <% } %>
+                                            <% } else { %>
+                                                <button type="button" class="btn btn-sm btn-secondary" disabled>
+                                                    <i class="fas fa-clock"></i> Awaiting Release
+                                                </button>
                                             <% } %>
                                         </div>
                                     </td>

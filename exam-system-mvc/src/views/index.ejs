@@ -68,15 +68,15 @@
                             <% if (typeof recentResults !== 'undefined' && recentResults.length > 0) { %>
                                 <% recentResults.forEach(result => { %>
                                     <a href="/exams/<%= result.examId._id %>/results/<%= result._id.toString() %>" class="list-group-item list-group-item-action">
-                                        <div class="d-flex w-100 justify-content-between">
-                                            <h6 class="mb-1"><%= result.examTitle %></h6>
+                                            <div class="d-flex w-100 justify-content-between">
+                                                <h6 class="mb-1"><%= result.examTitle %></h6>
                                             <span class="badge bg-<%= result.status === 'PASS' ? 'success' : 'danger' %>
                                                 px-2">
-                                                <%= result.percentage.toFixed(1) %>%
-                                            </span>
-                                        </div>
+                                                    <%= result.percentage.toFixed(1) %>%
+                                                </span>
+                                            </div>
                                         <!-- <small class="text-muted"><%= new Date(result.submittedAt).toLocaleDateString() %></small> -->
-                                    </a>
+                                        </a>
                                 <% }) %>
                             <% } else { %>
                                 <p class="text-muted mb-0">No recent results</p>
