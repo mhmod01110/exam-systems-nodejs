@@ -90,17 +90,16 @@
                                     <td>
                                         <% if (result.isReleased) { %>
                                             <div class="progress" style="height: 20px;">
-                                                <div class="progress-bar bg-<%= 
-                                                    result.percentage >= 80 ? 'success' :
-                                                    result.percentage >= 60 ? 'info' :
-                                                    'danger' %>"
+                                                <% const barWidth = result.percentage + '%'; %>
+                                                <% const barColor = result.percentage >= 80 ? 'success' : result.percentage >= 60 ? 'info' : 'danger'; %>
+                                                <div 
+                                                    class="progress-bar bg-<%= barColor %>"
                                                     role="progressbar"
-
+                                                    style="width: <%= barWidth %>"
                                                     aria-valuenow="<%= result.percentage %>"
                                                     aria-valuemin="0"
-                                                    aria-valuemax="100">
-                                                    <%= result.percentage.toFixed(1) %>%
-                                                </div>
+                                                    aria-valuemax="100"
+                                                ><%= result.percentage.toFixed(1) %>%</div>
                                             </div>
                                         <% } else { %>
                                             <span class="text-muted">Results not released yet</span>
