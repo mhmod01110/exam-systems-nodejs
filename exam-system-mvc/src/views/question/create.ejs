@@ -96,17 +96,16 @@
 
                 <!-- Images -->
                 <div class="mb-4">
-                    <label class="form-label">Images</label>
+                    <label class="form-label">Images (Optional)</label>
                     <div id="imageContainer">
                         <div class="image-row mb-2">
                             <div class="input-group">
                                 <input type="file" 
-                                       name="images[]" 
-                                       class="form-control"
-                                       accept="image/*">
+                                       class="form-control image-file"
+                                       accept="image/*"
+                                       onchange="handleImageSelect(this)">
                                 <input type="text" 
-                                       name="captions[]" 
-                                       class="form-control"
+                                       class="form-control image-caption"
                                        placeholder="Image caption (optional)">
                                 <button type="button" 
                                         class="btn btn-danger remove-image"
@@ -116,6 +115,8 @@
                             </div>
                         </div>
                     </div>
+                    <!-- Create hidden inputs for each image property -->
+                    <div id="imageDataContainer"></div>
                     <button type="button" 
                             class="btn btn-secondary mt-2" 
                             id="addImage">
@@ -142,6 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const optionsSection = document.getElementById('optionsSection');
     const imageContainer = document.getElementById('imageContainer');
     const addImageBtn = document.getElementById('addImage');
+    const imageDataContainer = document.getElementById('imageDataContainer');
 
     // Enhanced form validation
     form.addEventListener('submit', function(event) {
@@ -150,105 +152,88 @@ document.addEventListener('DOMContentLoaded', function() {
             event.stopPropagation();
         }
 
-        // Additional validation for MCQ questions
-        if (typeSelect.value === 'MCQ') {
-            const mcqOptions = document.getElementById('mcqOptions');
-            const options = mcqOptions ? mcqOptions.querySelectorAll('.option-row') : [];
-            const selectedCorrectOption = form.querySelector('input[name="correctOption"]:checked');
-
-            if (options.length < 2) {
-                event.preventDefault();
-                alert('MCQ questions must have at least 2 options!');
-                return;
+        // Process images before submission
+        const imageRows = imageContainer.querySelectorAll('.image-row');
+        imageDataContainer.innerHTML = ''; // Clear previous data
+        
+        // Counter for valid images
+        let validImageCount = 0;
+        
+        imageRows.forEach((row, index) => {
+            const fileInput = row.querySelector('.image-file');
+            const caption = row.querySelector('.image-caption').value;
+            
+            // Only add if there's an image selected
+            if (fileInput.files && fileInput.files[0] && fileInput.dataset.imageData) {
+                // Create hidden inputs for this image
+                const urlInput = document.createElement('input');
+                urlInput.type = 'hidden';
+                urlInput.name = `images[${validImageCount}][url]`;
+                urlInput.value = fileInput.dataset.imageData;
+                
+                const captionInput = document.createElement('input');
+                captionInput.type = 'hidden';
+                captionInput.name = `images[${validImageCount}][caption]`;
+                captionInput.value = caption || '';
+                
+                imageDataContainer.appendChild(urlInput);
+                imageDataContainer.appendChild(captionInput);
+                
+                validImageCount++;
             }
-
-            if (!selectedCorrectOption) {
-                event.preventDefault();
-                alert('Please select the correct answer for the MCQ question!');
-                return;
-            }
-        }
+        });
 
         form.classList.add('was-validated');
     });
 
-    // Function to create MCQ options section
-    function createMCQSection() {
-        optionsSection.innerHTML = `
-            <div class="mb-4">
-                <label class="form-label">Options</label>
-                <div id="mcqOptions">
-                    <!-- Options will be added here -->
-                </div>
-                <button type="button" class="btn btn-secondary mt-2" id="addOption">
-                    <i class="fas fa-plus"></i> Add Option
+    // Function to handle image selection
+    function handleImageSelect(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                input.dataset.imageData = e.target.result;
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    // Update the addImage function
+    addImageBtn.addEventListener('click', function() {
+        const imageRow = document.createElement('div');
+        imageRow.className = 'image-row mb-2';
+        imageRow.innerHTML = `
+            <div class="input-group">
+                <input type="file" 
+                       class="form-control image-file"
+                       accept="image/*"
+                       onchange="handleImageSelect(this)">
+                <input type="text" 
+                       class="form-control image-caption"
+                       placeholder="Image caption (optional)">
+                <button type="button" class="btn btn-danger remove-image">
+                    <i class="fas fa-times"></i>
                 </button>
-                <div class="form-text text-danger">
-                    * At least 2 options are required. Select the correct answer using the radio button.
-                </div>
             </div>
         `;
+        imageContainer.appendChild(imageRow);
+        updateRemoveImageButtons();
+    });
 
-        const mcqOptions = document.getElementById('mcqOptions');
-        const addOptionBtn = document.getElementById('addOption');
-
-        // Function to add new option
-        function addOption() {
-            const optionCount = mcqOptions.children.length;
-            const newOption = document.createElement('div');
-            newOption.className = 'option-row mb-2';
-            newOption.innerHTML = `
-                <div class="input-group">
-                    <div class="input-group-text">
-                        <input type="radio" name="correctOption" value="${optionCount}" required>
-                    </div>
-                    <input type="text" 
-                           name="options[]" 
-                           class="form-control"
-                           placeholder="Option ${optionCount + 1}"
-                           required>
-                    <button type="button" 
-                            class="btn btn-danger remove-option"
-                            ${optionCount < 2 ? 'disabled' : ''}>
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `;
-            mcqOptions.appendChild(newOption);
-            updateRemoveButtons();
+    // Update remove image handler
+    imageContainer.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-image') || 
+            e.target.closest('.remove-image')) {
+            const row = e.target.closest('.image-row');
+            row.remove();
+            updateRemoveImageButtons();
         }
+    });
 
-        // Function to update remove buttons state
-        function updateRemoveButtons() {
-            const removeButtons = mcqOptions.querySelectorAll('.remove-option');
-            removeButtons.forEach(btn => {
-                btn.disabled = mcqOptions.children.length <= 2;
-            });
-        }
-
-        // Add initial two options
-        addOption();
-        addOption();
-
-        // Add option button click handler
-        addOptionBtn.addEventListener('click', addOption);
-
-        // Remove option button click handler
-        mcqOptions.addEventListener('click', function(e) {
-            if (e.target.closest('.remove-option')) {
-                const optionRow = e.target.closest('.option-row');
-                if (mcqOptions.children.length > 2) {
-                    optionRow.remove();
-                    // Update radio values and placeholders
-                    mcqOptions.querySelectorAll('[name="correctOption"]').forEach((radio, index) => {
-                        radio.value = index;
-                    });
-                    mcqOptions.querySelectorAll('[name="options[]"]').forEach((input, index) => {
-                        input.placeholder = `Option ${index + 1}`;
-                    });
-                    updateRemoveButtons();
-                }
-            }
+    // Update remove image buttons state
+    function updateRemoveImageButtons() {
+        const removeButtons = imageContainer.querySelectorAll('.remove-image');
+        removeButtons.forEach(button => {
+            button.disabled = imageContainer.children.length <= 1;
         });
     }
 
@@ -258,6 +243,20 @@ document.addEventListener('DOMContentLoaded', function() {
         
         switch(selectedType) {
             case 'MCQ':
+                optionsSection.innerHTML = `
+                    <div class="mb-4">
+                        <label class="form-label">Options</label>
+                        <div id="mcqOptions">
+                            <!-- Options will be added here -->
+                        </div>
+                        <button type="button" class="btn btn-secondary mt-2" id="addOption">
+                            <i class="fas fa-plus"></i> Add Option
+                        </button>
+                        <div class="form-text text-danger">
+                            * At least 2 options are required. Select the correct answer using the radio button.
+                        </div>
+                    </div>
+                `;
                 createMCQSection();
                 break;
 
@@ -318,37 +317,68 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Add image field
-    addImageBtn.addEventListener('click', function() {
-        const imageRow = document.createElement('div');
-        imageRow.className = 'image-row mb-2';
-        imageRow.innerHTML = `
-            <div class="input-group">
-                <input type="file" name="images[]" class="form-control" accept="image/*">
-                <input type="text" name="captions[]" class="form-control" placeholder="Image caption (optional)">
-                <button type="button" class="btn btn-danger remove-image">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        `;
-        imageContainer.appendChild(imageRow);
-        updateRemoveImageButtons();
-    });
+    // Function to create MCQ options section
+    function createMCQSection() {
+        const mcqOptions = document.getElementById('mcqOptions');
+        const addOptionBtn = document.getElementById('addOption');
 
-    // Remove image field
-    imageContainer.addEventListener('click', function(e) {
-        if (e.target.classList.contains('remove-image') || 
-            e.target.closest('.remove-image')) {
-            e.target.closest('.image-row').remove();
-            updateRemoveImageButtons();
+        // Function to add new option
+        function addOption() {
+            const optionCount = mcqOptions.children.length;
+            const newOption = document.createElement('div');
+            newOption.className = 'option-row mb-2';
+            newOption.innerHTML = `
+                <div class="input-group">
+                    <div class="input-group-text">
+                        <input type="radio" name="correctOption" value="${optionCount}" required>
+                    </div>
+                    <input type="text" 
+                           name="options[]" 
+                           class="form-control"
+                           placeholder="Option ${optionCount + 1}"
+                           required>
+                    <button type="button" 
+                            class="btn btn-danger remove-option"
+                            ${optionCount < 2 ? 'disabled' : ''}>
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            mcqOptions.appendChild(newOption);
+            updateRemoveButtons();
         }
-    });
 
-    // Update remove image buttons state
-    function updateRemoveImageButtons() {
-        const removeButtons = imageContainer.querySelectorAll('.remove-image');
-        removeButtons.forEach(button => {
-            button.disabled = imageContainer.children.length <= 1;
+        // Function to update remove buttons state
+        function updateRemoveButtons() {
+            const removeButtons = mcqOptions.querySelectorAll('.remove-option');
+            removeButtons.forEach(btn => {
+                btn.disabled = mcqOptions.children.length <= 2;
+            });
+        }
+
+        // Add initial two options
+        addOption();
+        addOption();
+
+        // Add option button click handler
+        addOptionBtn.addEventListener('click', addOption);
+
+        // Remove option button click handler
+        mcqOptions.addEventListener('click', function(e) {
+            if (e.target.closest('.remove-option')) {
+                const optionRow = e.target.closest('.option-row');
+                if (mcqOptions.children.length > 2) {
+                    optionRow.remove();
+                    // Update radio values and placeholders
+                    mcqOptions.querySelectorAll('[name="correctOption"]').forEach((radio, index) => {
+                        radio.value = index;
+                    });
+                    mcqOptions.querySelectorAll('[name="options[]"]').forEach((input, index) => {
+                        input.placeholder = `Option ${index + 1}`;
+                    });
+                    updateRemoveButtons();
+                }
+            }
         });
     }
 });
