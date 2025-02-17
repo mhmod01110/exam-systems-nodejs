@@ -19,7 +19,9 @@
             <div class="card bg-success text-white">
                 <div class="card-body">
                     <h5 class="card-title">Passed</h5>
-                    <h2 class="mb-0"><%= results.filter(r => r.status === 'PASS').length %></h2>
+                    <h2 class="mb-0">
+                        <%= results.filter(r => r.isReleased && r.status === 'PASS').length %>
+                    </h2>
                 </div>
             </div>
         </div>
@@ -27,7 +29,9 @@
             <div class="card bg-danger text-white">
                 <div class="card-body">
                     <h5 class="card-title">Failed</h5>
-                    <h2 class="mb-0"><%= results.filter(r => r.status === 'FAIL').length %></h2>
+                    <h2 class="mb-0">
+                        <%= results.filter(r => r.isReleased && r.status === 'FAIL').length %>
+                    </h2>
                 </div>
             </div>
         </div>
@@ -36,9 +40,15 @@
                 <div class="card-body">
                     <h5 class="card-title">Average Score</h5>
                     <h2 class="mb-0">
-                        <%= results.length ? 
-                            (results.reduce((sum, r) => sum + r.percentage, 0) / results.length).toFixed(1) + '%' : 
-                            '0%' %>
+                        <% 
+                            const releasedResults = results.filter(r => r.isReleased);
+                            if (releasedResults.length > 0) {
+                                const avgScore = (releasedResults.reduce((sum, r) => sum + r.percentage, 0) / releasedResults.length).toFixed(1);
+                        %>
+                            <%= avgScore %>%
+                        <% } else { %>
+                            --
+                        <% } %>
                     </h2>
                 </div>
             </div>
