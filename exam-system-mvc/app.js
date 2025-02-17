@@ -34,10 +34,11 @@ app.set('layout extractScripts', true);
 app.set('layout extractStyles', true);
 app.set('layout extractMetas', true);
 
-app.locals.defineContent = function(name) {
-    return `<%- defineContent('${name}') %>`;
+app.locals.contentFor = function(name) {
+  return `<%- contentFor('${name}') %>`;
 };
-app.locals.body = '<%- body %>';
+
+app.locals.styles = '<%- styles %>';
 
 // Middleware
 app.use(express.static(path.join(__dirname, 'public')));
